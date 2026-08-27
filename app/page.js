@@ -3,21 +3,72 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { mascararTelefone } from '../lib/telefone.js';
 
-// ─── SOMBRERO DO MIOLO ───────────────────────────────────────────────────────
-// SVG inline em vez de arquivo de imagem: some uma requisição do caminho
-// crítico e o chapéu fica nítido em qualquer densidade de tela. O alvo de
-// first paint é 1,5s — a comida está esfriando na frente da pessoa.
+// ─── PEÇAS DE MARCA ──────────────────────────────────────────────────────────
+// Tudo SVG inline: some do caminho crítico uma requisição por peça, e sai
+// nítido em qualquer densidade de tela. O alvo é first paint abaixo de 1,5s.
+
 function Sombrero() {
   return (
     <svg viewBox="0 0 120 78" aria-hidden="true">
-      <ellipse cx="60" cy="52" rx="55" ry="22" fill="#F5C518" stroke="#2B2118" strokeWidth="3.4" />
+      <ellipse cx="60" cy="52" rx="55" ry="22" fill="#F5C518" stroke="#2B1D12" strokeWidth="3.4" />
       <path d="M60 6c11 0 19 20 21 38-7 4-13 5-21 5s-14-1-21-5C41 26 49 6 60 6z"
-            fill="#F5C518" stroke="#2B2118" strokeWidth="3.4" />
+            fill="#F5C518" stroke="#2B1D12" strokeWidth="3.4" />
       <path d="M39.5 38c6.5 3 13 4 20.5 4s14-1 20.5-4l1.2 7c-6.8 3-14 4.2-21.7 4.2S45.1 48 38.3 45z"
             fill="#C8102E" />
       <path d="M8 50c14 9 33 13 52 13s38-4 52-13l1 5c-14 9-33 13.5-53 13.5S21 64 7 55z"
             fill="#1B4D3E" />
     </svg>
+  );
+}
+
+// Papel picado. É o elemento que mais entrega "festa mexicana" por peça — e
+// aqui é um <pattern>, então repete sozinho na largura que for sem esticar.
+function Bandeirinhas() {
+  return (
+    <svg className="bandeirinhas" aria-hidden="true" preserveAspectRatio="none">
+      <defs>
+        <pattern id="picado" width="112" height="26" patternUnits="userSpaceOnUse">
+          <line x1="0" y1="2" x2="112" y2="2" stroke="#B8791F" strokeWidth="2.5" />
+          <polygon points="0,3 28,3 14,24"    fill="#C8102E" />
+          <polygon points="28,3 56,3 42,24"   fill="#1B4D3E" />
+          <polygon points="56,3 84,3 70,24"   fill="#1D3557" />
+          <polygon points="84,3 112,3 98,24"  fill="#E8A33D" />
+        </pattern>
+      </defs>
+      <rect width="100%" height="26" fill="url(#picado)" />
+    </svg>
+  );
+}
+
+// Tachinhas cravadas no aro. Ficam fora do disco de propósito: parafuso que
+// gira junto com a roda destrói a ideia de que o aro é a parte fixa.
+function TachasAro({ quantidade = 24 }) {
+  return (
+    <div className="roleta-tachas" aria-hidden="true">
+      <svg viewBox="0 0 100 100">
+        {Array.from({ length: quantidade }, (_, i) => {
+          const a = (i / quantidade) * Math.PI * 2 - Math.PI / 2;
+          return (
+            <circle key={i} r="1.5"
+              cx={50 + 46.4 * Math.cos(a)}
+              cy={50 + 46.4 * Math.sin(a)}
+              fill="#7A4E0C" opacity=".55" />
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function Agulha() {
+  return (
+    <div className="agulha" aria-hidden="true">
+      <svg viewBox="0 0 34 46">
+        <path d="M17 45C17 45 3 25 3 15A14 14 0 1 1 31 15C31 25 17 45 17 45Z"
+              fill="#C8102E" stroke="#E8A33D" strokeWidth="3" strokeLinejoin="round" />
+        <circle cx="17" cy="15" r="5" fill="#F9DCA0" />
+      </svg>
+    </div>
   );
 }
 
@@ -49,31 +100,52 @@ function Roleta({ premios, discoRef }) {
       <div className="roleta-aro" />
       <div className="roleta-disco" ref={discoRef}>
         <svg viewBox="0 0 300 300" role="img" aria-label="Roleta de prêmios do Chapelão">
+          <defs>
+            {/* Escurece a borda de cada fatia: dá profundidade sem precisar de
+                uma cor diferente por fatia. */}
+            <radialGradient id="profundidade" cx="50%" cy="50%" r="50%">
+              <stop offset="55%" stopColor="#000" stopOpacity="0" />
+              <stop offset="100%" stopColor="#000" stopOpacity=".26" />
+            </radialGradient>
+          </defs>
+
+          {premios.map((p, i) => (
+            <path key={p.id} d={caminhoFatia(i, fatia)} fill={p.cor}
+                  stroke="#FBF3E4" strokeWidth="2.5" />
+          ))}
+
+          <circle cx={CX} cy={CY} r={R} fill="url(#profundidade)" />
+
           {premios.map((p, i) => {
             const meio = i * fatia + fatia / 2;
-            const [tx, ty] = ponto(meio, R * 0.63);
+            const [tx, ty] = ponto(meio, R * 0.64);
+            // Texto radial fica de cabeça pra baixo nas fatias da metade de
+            // baixo. Girar 180° nessas faz o rótulo apontar pro centro em vez
+            // de pra borda — o que importa é conseguir ler sem virar o celular.
+            const anguloTexto = meio > 90 && meio < 270 ? meio + 180 : meio;
             // Texto escuro na fatia dourada — branco sobre dourado não lê.
-            const tinta = p.raro ? '#2B2118' : '#FFFFFF';
+            const tinta = p.raro ? '#2B1D12' : '#FFFFFF';
             const palavras = p.nome.split(' ');
             const linha1 = palavras.slice(0, -1).join(' ') || palavras[0];
             const linha2 = palavras.length > 1 ? palavras[palavras.length - 1] : '';
 
             return (
-              <g key={p.id}>
-                <path d={caminhoFatia(i, fatia)} fill={p.cor} stroke="#FBF3E4" strokeWidth="2.5" />
-                <g transform={`rotate(${meio} ${tx} ${ty})`}>
-                  <text x={tx} y={ty} textAnchor="middle" fill={tinta}
-                        fontSize="15" fontWeight="800" fontFamily="system-ui, sans-serif">
-                    <tspan x={tx} dy="-2">{linha1}</tspan>
-                    {linha2 && <tspan x={tx} dy="16">{linha2}</tspan>}
-                  </text>
-                </g>
+              <g key={`t-${p.id}`} transform={`rotate(${anguloTexto} ${tx} ${ty})`}>
+                <text x={tx} y={ty} textAnchor="middle" fill={tinta}
+                      fontSize="15" fontWeight="800"
+                      fontFamily="var(--fonte), system-ui, sans-serif">
+                  <tspan x={tx} dy="-2">{linha1}</tspan>
+                  {linha2 && <tspan x={tx} dy="16">{linha2}</tspan>}
+                </text>
               </g>
             );
           })}
         </svg>
       </div>
-      <div className="agulha" />
+
+      <div className="roleta-luz" />
+      <TachasAro />
+      <Agulha />
       <div className="miolo"><Sombrero /></div>
     </div>
   );
@@ -290,28 +362,36 @@ export default function Pagina() {
     });
   }
 
+  const mostraRoleta = etapa === 'pronta' || etapa === 'girando' || etapa === 'revelado';
+
   return (
-    <>
+    <div className="cena">
+      <Bandeirinhas />
+
       <main className="palco">
         <header className="cabecalho">
-          <div className="marca">Restaurante Chapelão</div>
+          <div className="selo-marca">
+            <Sombrero />
+            <span>Clube do Chapelão</span>
+          </div>
+
           {etapa === 'codigo' ? (
-            <h1 className="chamada">Prêmio garantido!</h1>
+            <h1 className="chamada">Prêmio <span className="grifo">garantido</span></h1>
           ) : etapa === 'revelado' ? (
-            <h1 className="chamada">Você ganhou!</h1>
+            <h1 className="chamada">Você <span className="grifo">ganhou!</span></h1>
           ) : (
             <>
-              <h1 className="chamada">Tem um presente<br />seu esperando</h1>
+              <h1 className="chamada">
+                Tem um <span className="grifo">presente</span><br />seu esperando
+              </h1>
               <p className="subchamada">Gira a roleta e descobre o que é.</p>
             </>
           )}
         </header>
 
-        {etapa === 'carregando' && (
-          <p className="carregando pulso">Preparando sua roleta…</p>
-        )}
+        {etapa === 'carregando' && <p className="carregando pulso">Preparando sua roleta…</p>}
 
-        {(etapa === 'pronta' || etapa === 'girando' || etapa === 'revelado') && premios.length > 0 && (
+        {mostraRoleta && premios.length > 0 && (
           <Roleta premios={premios} discoRef={discoRef} />
         )}
 
@@ -319,17 +399,17 @@ export default function Pagina() {
           <button className="botao botao-girar" onClick={girar}>Girar a roleta</button>
         )}
 
-        {etapa === 'girando' && (
-          <p className="carregando pulso">Girando…</p>
-        )}
+        {etapa === 'girando' && <p className="carregando pulso">Girando…</p>}
 
         {etapa === 'revelado' && premio && (
-          <section className="cartao" style={{ marginTop: 18 }}>
+          <section className="cartao" style={{ marginTop: 20 }}>
             <div className="premio-selo">Seu prêmio</div>
             <h2 className="premio-nome">{premio.nome}</h2>
             <p className="premio-desc">{premio.descricao}</p>
 
             <form onSubmit={enviar}>
+              <p className="form-topo">Pra onde a gente manda seu código?</p>
+
               <div className="campo">
                 <label htmlFor="nome">Seu nome</label>
                 <input
@@ -366,15 +446,13 @@ export default function Pagina() {
         )}
 
         {etapa === 'codigo' && resgate && (
-          <section className="cartao" style={{ marginTop: 12 }}>
+          <section className="cartao" style={{ marginTop: 16 }}>
             <div className="premio-selo">{resgate.premio}</div>
-            <p className="premio-desc" style={{ marginTop: 6 }}>
-              {resgate.premio_descricao}
-            </p>
+            <p className="premio-desc" style={{ marginTop: 10 }}>{resgate.premio_descricao}</p>
 
-            <div className="codigo-caixa">
-              <div className="codigo-rotulo">Seu código</div>
-              <div className="codigo-valor">{resgate.codigo}</div>
+            <div className="cupom">
+              <div className="cupom-rotulo">Seu código</div>
+              <div className="cupom-codigo">{resgate.codigo}</div>
             </div>
 
             {resgate.repetido && (
@@ -387,11 +465,11 @@ export default function Pagina() {
 
             <ul className="regras">
               <li>Vale até <strong>{dataBR(resgate.valido_ate)}</strong></li>
-              <li>Válido só em <strong>pedido direto no WhatsApp</strong>, não no app</li>
-              <li>Uso único, é só pedir a cortesia na conversa</li>
+              <li>Só em <strong>pedido direto no WhatsApp</strong>, não no app</li>
+              <li>Uso único — é só pedir a cortesia na conversa</li>
             </ul>
 
-            <button className="botao botao-zap" onClick={irProWhatsapp} style={{ marginTop: 18 }}>
+            <button className="botao botao-zap" onClick={irProWhatsapp} style={{ marginTop: 20 }}>
               Resgatar no WhatsApp
             </button>
             <button className="botao botao-fantasma" onClick={copiar}>
@@ -412,6 +490,6 @@ export default function Pagina() {
         Clube do Chapelão · Av. Paraná, 5648 — Umuarama/PR<br />
         Seus dados são usados só para o contato do restaurante.
       </p>
-    </>
+    </div>
   );
 }

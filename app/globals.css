@@ -1,121 +1,222 @@
-/* ─── PALETA CHAPELÃO ──────────────────────────────────────────────────────
-   Cores tiradas do logo: sombrero amarelo com faixa vermelha, verde e azul
-   sobre fundo creme. O dourado é reservado pro prêmio — se ele aparecer em
-   botão comum, a fatia rara para de parecer especial.                       */
+/* ═══════════════════════════════════════════════════════════════════════════
+   ROLETA DE RESGATE — Restaurante Chapelão
+   ═══════════════════════════════════════════════════════════════════════════
+   Referência visual é festa de rua mexicana, não cassino: papel picado,
+   mosaico, madeira, dourado quente. O dourado é reservado ao prêmio — se ele
+   virar cor de botão comum, a fatia rara para de parecer especial.
+
+   Mobile-first de verdade: 100% do tráfego é QR lido no celular. O layout de
+   desktop existe só pra a página não parecer quebrada quando alguém abre no
+   computador — vira um cartaz centralizado em vez de uma coluna órfã.       */
 
 :root {
-  --creme:      #FBF3E4;
-  --creme-alto: #FFFDF7;
-  --vermelho:   #C8102E;
-  --vermelho-esc: #9E0C24;
-  --azul:       #1D3557;
-  --verde:      #1B4D3E;
-  --dourado:    #E8A33D;
-  --dourado-esc:#C4832A;
-  --tinta:      #2B2118;
-  --tinta-fraca:#6B5B4A;
-  --sombra:     0 6px 20px rgba(43, 33, 24, .16);
+  --creme:       #FBF3E4;
+  --creme-alto:  #FFFCF4;
+  --creme-fundo: #F2E4C9;
+
+  --vermelho:     #C8102E;
+  --vermelho-esc: #96061F;
+  --azul:         #1D3557;
+  --verde:        #1B4D3E;
+
+  --dourado:      #E8A33D;
+  --dourado-claro:#F9DCA0;
+  --dourado-esc:  #B8791F;
+
+  --tinta:       #2B1D12;
+  --tinta-2:     #6E5B45;
+  --tinta-fraca: #7A6650;
+
+  --raio:    22px;
+  --raio-sm: 14px;
+
+  --sombra-suave: 0 4px 16px rgba(43, 29, 18, .10);
+  --sombra-media: 0 10px 30px -8px rgba(43, 29, 18, .28);
+  --sombra-forte: 0 22px 50px -14px rgba(43, 29, 18, .40);
 }
 
 * { box-sizing: border-box; }
 
+html {
+  /* Evita o "pulo" do layout quando a barra de rolagem aparece na revelação. */
+  scrollbar-gutter: stable;
+}
+
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--creme);
   color: var(--tinta);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--fonte, "Montserrat"), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   overscroll-behavior-y: contain;
 }
 
 body {
   min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
+  /* Calor no topo, onde fica a roleta, escurecendo pras bordas: dá volume à
+     página sem precisar de imagem de fundo. */
+  background:
+    radial-gradient(120% 62% at 50% 0%, #FFFBF0 0%, var(--creme) 42%, var(--creme-fundo) 100%)
+    fixed;
 }
 
-/* ─── ESTRUTURA ─────────────────────────────────────────────────────────── */
+/* Textura de papel: pontinhos quase invisíveis que tiram o ar de "div branca".
+   Custo zero de rede — é gradiente, não imagem. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: radial-gradient(circle at 1px 1px, rgba(150, 6, 31, .055) 1px, transparent 0);
+  background-size: 20px 20px;
+}
+
+/* ─── CENA ─────────────────────────────────────────────────────────────────
+   No celular ocupa a tela inteira. A partir de 620px vira um cartaz com
+   borda e sombra, centralizado — que é o que impede a coluna estreita de
+   ficar boiando num vazio creme de 1900px. O corte é 620 e não 760 porque
+   entre os dois a página já ficava larga demais pra ler como celular.       */
+
+.cena {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+}
+
+@media (min-width: 620px) {
+  body { padding: 34px 20px; display: grid; place-items: start center; }
+
+  .cena {
+    width: 100%;
+    max-width: 470px;
+    min-height: 0;
+    border-radius: var(--raio);
+    overflow: hidden;
+    background: linear-gradient(180deg, var(--creme-alto), var(--creme));
+    box-shadow: var(--sombra-forte);
+    border: 1px solid rgba(184, 121, 31, .22);
+  }
+}
+
+/* ─── PAPEL PICADO ────────────────────────────────────────────────────────
+   A bandeirinha é o que mais entrega "festa mexicana" com menos elemento.
+   É SVG com <pattern>: repete no tamanho fixo e sai nítido em qualquer tela. */
+
+.bandeirinhas { display: block; width: 100%; height: 26px; flex: none; }
+
+/* ─── PALCO ───────────────────────────────────────────────────────────────── */
 
 .palco {
   flex: 1;
   width: 100%;
-  max-width: 460px;
+  max-width: 470px;
   margin: 0 auto;
-  padding: 18px 18px 28px;
+  padding: 14px 20px 26px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
 }
 
-.cabecalho { margin-bottom: 10px; }
+/* ─── CABEÇALHO ───────────────────────────────────────────────────────────── */
 
-.marca {
-  font-size: 13px;
+.cabecalho { width: 100%; }
+
+.selo-marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 13px 5px 7px;
+  border-radius: 99px;
+  background: rgba(200, 16, 46, .07);
+  border: 1px solid rgba(200, 16, 46, .18);
+}
+
+.selo-marca svg { width: 22px; height: auto; }
+
+.selo-marca span {
+  font-size: 10.5px;
   font-weight: 800;
-  letter-spacing: .16em;
+  letter-spacing: .17em;
   text-transform: uppercase;
   color: var(--vermelho);
 }
 
 .chamada {
-  margin: 8px 0 2px;
-  font-size: clamp(23px, 7vw, 30px);
+  margin: 13px 0 0;
+  font-size: clamp(28px, 8.4vw, 36px);
   font-weight: 900;
-  line-height: 1.12;
+  line-height: 1.04;
+  letter-spacing: -.022em;
   color: var(--tinta);
 }
 
+/* O grifo dourado atrás da palavra-chave: o olho pousa nela antes de ler a
+   frase toda, que é o que faz a promessa chegar antes do texto. */
+.grifo {
+  position: relative;
+  white-space: nowrap;
+  color: var(--vermelho);
+}
+.grifo::after {
+  content: '';
+  position: absolute;
+  left: -2px; right: -2px; bottom: .06em;
+  height: .32em;
+  background: linear-gradient(90deg, rgba(232,163,61,.55), rgba(249,220,160,.75));
+  border-radius: 3px;
+  z-index: -1;
+}
+
 .subchamada {
-  margin: 0;
-  font-size: 15px;
+  margin: 9px 0 0;
+  font-size: 14.5px;
+  font-weight: 500;
   color: var(--tinta-fraca);
-  line-height: 1.45;
-}
-
-/* ─── RODAPÉ MOSAICO ────────────────────────────────────────────────────── */
-/* Faixa do sombrero: listra vermelha, mosaico de triângulos, listra verde. */
-
-.mosaico {
-  width: 100%;
-  border-top: 5px solid var(--vermelho);
-  border-bottom: 5px solid var(--verde);
-  height: 26px;
-  background-color: var(--dourado);
-  background-image:
-    linear-gradient( 45deg, var(--verde) 25%, transparent 25% 75%, var(--azul) 75%),
-    linear-gradient(-45deg, var(--azul) 25%, transparent 25% 75%, var(--verde) 75%);
-  background-size: 18px 18px;
-  background-position: 0 0;
-}
-
-.rodape-nota {
-  padding: 12px 20px calc(14px + env(safe-area-inset-bottom));
-  font-size: 11.5px;
   line-height: 1.5;
-  color: var(--tinta-fraca);
-  text-align: center;
-  background: var(--creme);
 }
 
-/* ─── ROLETA ────────────────────────────────────────────────────────────── */
+/* ─── ROLETA ──────────────────────────────────────────────────────────────── */
 
 .roleta-area {
   position: relative;
-  width: min(88vw, 340px);
+  width: min(84vw, 320px);
   aspect-ratio: 1;
-  margin: 14px auto 6px;
+  margin: 20px auto 4px;
+  flex: none;
 }
 
-/* Aro externo dourado, com o mesmo peso visual da aba do chapéu. */
+/* Brilho quente atrás da roda: separa ela do fundo sem precisar de borda. */
+.roleta-area::before {
+  content: '';
+  position: absolute;
+  inset: -13%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(232,163,61,.30), rgba(232,163,61,0) 68%);
+  pointer-events: none;
+}
+
+/* Aro dourado com veios: o conic dá o reflexo de metal, que chapado não tem. */
 .roleta-aro {
   position: absolute;
-  inset: -9px;
+  inset: -11px;
   border-radius: 50%;
-  background: conic-gradient(var(--dourado), #F7D08A, var(--dourado-esc), #F7D08A, var(--dourado));
-  box-shadow: var(--sombra);
+  background: conic-gradient(
+    var(--dourado-esc) 0deg, var(--dourado-claro) 38deg, var(--dourado) 76deg,
+    var(--dourado-esc) 128deg, var(--dourado-claro) 182deg, var(--dourado) 226deg,
+    var(--dourado-esc) 284deg, var(--dourado-claro) 330deg, var(--dourado-esc) 360deg);
+  box-shadow: var(--sombra-media), inset 0 0 0 1px rgba(120, 76, 12, .45);
 }
+
+/* Tachinhas do aro. Ficam FORA do disco: parafuso que gira junto com a roda
+   estraga a ilusão de que o aro é a estrutura fixa. */
+.roleta-tachas { position: absolute; inset: -11px; pointer-events: none; }
+.roleta-tachas svg { width: 100%; height: 100%; display: block; }
 
 .roleta-disco {
   position: absolute;
@@ -124,145 +225,189 @@ body {
   overflow: hidden;
   will-change: transform;
   transform: rotate(0deg);
+  box-shadow: inset 0 0 22px rgba(43, 29, 18, .30);
 }
 
 .roleta-disco svg { display: block; width: 100%; height: 100%; }
 
-/* Agulha fixa no topo. Fica FORA do disco que gira, senão giraria junto. */
+/* Iluminação. Fica parada enquanto o disco gira, então lê como luz do
+   ambiente batendo na roda — e não como mancha pintada numa fatia. */
+.roleta-luz {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 2;
+  background:
+    radial-gradient(circle at 33% 24%, rgba(255,255,255,.30), rgba(255,255,255,0) 46%),
+    radial-gradient(circle at 72% 84%, rgba(43,29,18,.26), rgba(43,29,18,0) 56%);
+}
+
+/* Agulha. Fora do disco, senão giraria junto. */
 .agulha {
   position: absolute;
-  top: -16px;
+  top: -25px;
   left: 50%;
   transform: translateX(-50%);
-  width: 0; height: 0;
-  border-left: 13px solid transparent;
-  border-right: 13px solid transparent;
-  border-top: 26px solid var(--vermelho);
-  filter: drop-shadow(0 2px 2px rgba(0,0,0,.3));
-  z-index: 3;
+  z-index: 4;
+  filter: drop-shadow(0 3px 4px rgba(43,29,18,.42));
 }
+.agulha svg { display: block; width: 34px; height: auto; }
 
-.agulha::after {
-  content: '';
-  position: absolute;
-  top: -30px; left: -7px;
-  width: 14px; height: 14px;
-  border-radius: 50%;
-  background: var(--vermelho);
-  border: 3px solid var(--dourado);
-}
-
-/* Miolo com o sombrero. Também fora do disco: o chapéu não roda. */
 .miolo {
   position: absolute;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  width: 27%; aspect-ratio: 1;
+  width: 29%; aspect-ratio: 1;
   border-radius: 50%;
-  background: var(--creme-alto);
-  border: 4px solid var(--dourado);
+  background: radial-gradient(circle at 38% 30%, var(--creme-alto), #F0E2C6);
+  border: 3px solid var(--dourado);
+  box-shadow: 0 3px 10px rgba(43,29,18,.34), inset 0 0 0 2px rgba(255,255,255,.65);
   display: grid;
   place-items: center;
-  z-index: 2;
-  box-shadow: 0 2px 8px rgba(0,0,0,.2);
+  z-index: 3;
 }
 
-.miolo svg { width: 74%; height: auto; }
+.miolo svg { width: 72%; height: auto; }
 
-/* ─── BOTÕES ────────────────────────────────────────────────────────────── */
+/* ─── BOTÕES ──────────────────────────────────────────────────────────────── */
 
 .botao {
   display: block;
   width: 100%;
   padding: 17px 20px;
   border: none;
-  border-radius: 14px;
-  font-size: 17px;
-  font-weight: 800;
+  border-radius: var(--raio-sm);
   font-family: inherit;
+  font-size: 16.5px;
+  font-weight: 800;
+  letter-spacing: .01em;
   color: #fff;
-  background: var(--vermelho);
-  box-shadow: 0 4px 0 var(--vermelho-esc);
+  background: linear-gradient(180deg, #D6203C 0%, var(--vermelho) 55%, #B00E28 100%);
+  box-shadow: 0 4px 0 var(--vermelho-esc), 0 10px 22px -8px rgba(150,6,31,.65);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: transform .08s ease, box-shadow .08s ease;
+  transition: transform .09s ease, box-shadow .09s ease, filter .15s ease;
 }
 
-.botao:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--vermelho-esc); }
-.botao:disabled { opacity: .55; box-shadow: none; transform: none; cursor: default; }
+.botao:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 var(--vermelho-esc), 0 4px 10px -4px rgba(150,6,31,.5);
+}
+.botao:disabled { opacity: .5; box-shadow: none; transform: none; cursor: default; filter: grayscale(.35); }
 
 .botao-girar {
-  margin-top: 18px;
-  font-size: 19px;
-  letter-spacing: .04em;
+  margin-top: 22px;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: .07em;
   text-transform: uppercase;
+  animation: convida 2.6s ease-in-out infinite;
 }
 
-.botao-zap { background: #1EA750; box-shadow: 0 4px 0 #15803D; }
-.botao-zap:active { box-shadow: 0 1px 0 #15803D; }
+/* Respiro discreto no botão: sinaliza "é aqui" sem piscar na cara de ninguém. */
+@keyframes convida {
+  0%, 88%, 100% { transform: none; }
+  93%           { transform: translateY(-3px); }
+}
+
+.botao-zap {
+  background: linear-gradient(180deg, #2BC55F 0%, #1EA750 55%, #17853F 100%);
+  box-shadow: 0 4px 0 #12652F, 0 10px 22px -8px rgba(23,133,63,.6);
+}
+.botao-zap:active { box-shadow: 0 0 0 #12652F; }
 
 .botao-fantasma {
   margin-top: 10px;
   background: none;
-  border: 1.5px solid rgba(43,33,24,.22);
-  color: var(--tinta-fraca);
+  border: 1.5px solid rgba(184,121,31,.42);
+  color: var(--tinta-2);
   box-shadow: none;
-  font-size: 14.5px;
+  font-size: 14px;
   font-weight: 700;
   padding: 13px;
 }
-.botao-fantasma:active { transform: none; background: rgba(43,33,24,.05); }
+.botao-fantasma:active { transform: none; box-shadow: none; background: rgba(184,121,31,.09); }
 
-/* ─── CARTÕES ───────────────────────────────────────────────────────────── */
+/* ─── CARTÃO ──────────────────────────────────────────────────────────────── */
 
 .cartao {
+  position: relative;
   width: 100%;
-  background: var(--creme-alto);
-  border-radius: 18px;
-  padding: 22px 20px;
-  box-shadow: var(--sombra);
-  border: 1px solid rgba(43,33,24,.08);
-  animation: sobe .38s cubic-bezier(.2,.8,.3,1) both;
+  background: linear-gradient(180deg, var(--creme-alto), #FFF8E9);
+  border-radius: var(--raio);
+  padding: 24px 21px;
+  box-shadow: var(--sombra-media);
+  border: 1px solid rgba(184,121,31,.30);
+  animation: sobe .42s cubic-bezier(.2,.85,.3,1) both;
+}
+
+/* Fio dourado no topo do cartão: liga o cartão ao aro da roleta. */
+.cartao::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 12%; right: 12%;
+  height: 3px;
+  border-radius: 0 0 4px 4px;
+  background: linear-gradient(90deg, transparent, var(--dourado), transparent);
 }
 
 @keyframes sobe {
-  from { opacity: 0; transform: translateY(14px); }
+  from { opacity: 0; transform: translateY(16px) scale(.985); }
   to   { opacity: 1; transform: none; }
 }
 
 .premio-selo {
-  font-size: 12.5px;
-  font-weight: 800;
-  letter-spacing: .14em;
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 99px;
+  background: linear-gradient(180deg, var(--dourado-claro), var(--dourado));
+  color: #5A3B08;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: .15em;
   text-transform: uppercase;
-  color: var(--dourado-esc);
+  box-shadow: 0 2px 6px rgba(184,121,31,.35);
 }
 
 .premio-nome {
-  margin: 6px 0 8px;
-  font-size: clamp(26px, 8vw, 33px);
+  margin: 12px 0 8px;
+  font-size: clamp(27px, 8.4vw, 34px);
   font-weight: 900;
-  line-height: 1.1;
+  line-height: 1.06;
+  letter-spacing: -.02em;
   color: var(--vermelho);
 }
 
 .premio-desc {
   margin: 0;
-  font-size: 15px;
+  font-size: 14.5px;
+  font-weight: 500;
   line-height: 1.5;
   color: var(--tinta-fraca);
 }
 
-/* ─── FORMULÁRIO ────────────────────────────────────────────────────────── */
+/* ─── FORMULÁRIO ──────────────────────────────────────────────────────────── */
 
-.campo { margin-top: 14px; text-align: left; }
+.form-topo {
+  margin: 20px 0 2px;
+  padding-top: 18px;
+  border-top: 1px dashed rgba(184,121,31,.42);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--tinta-2);
+}
+
+.campo { margin-top: 13px; text-align: left; }
 
 .campo label {
   display: block;
-  font-size: 13.5px;
+  font-size: 12px;
   font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--tinta-2);
   margin-bottom: 6px;
-  color: var(--tinta);
 }
 
 .campo input[type="text"],
@@ -270,69 +415,92 @@ body {
   width: 100%;
   padding: 15px 14px;
   font-size: 16px; /* < 16px faz o iOS dar zoom ao focar o campo */
+  font-weight: 600;
   font-family: inherit;
   color: var(--tinta);
   background: #fff;
-  border: 1.5px solid rgba(43,33,24,.2);
-  border-radius: 12px;
+  border: 1.5px solid rgba(184,121,31,.38);
+  border-radius: var(--raio-sm);
   outline: none;
+  transition: border-color .16s, box-shadow .16s;
 }
 
-.campo input:focus { border-color: var(--vermelho); box-shadow: 0 0 0 3px rgba(200,16,46,.13); }
+.campo input::placeholder { color: #BCAA92; font-weight: 500; }
+.campo input:focus { border-color: var(--vermelho); box-shadow: 0 0 0 3.5px rgba(200,16,46,.14); }
 
 .consentimento {
   display: flex;
   gap: 10px;
   align-items: flex-start;
   margin-top: 16px;
+  padding: 12px;
+  border-radius: var(--raio-sm);
+  background: rgba(184,121,31,.08);
   text-align: left;
-  font-size: 12.5px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.5;
   color: var(--tinta-fraca);
 }
 
 .consentimento input {
   flex: 0 0 auto;
-  width: 21px; height: 21px;
+  width: 20px; height: 20px;
   margin: 0;
   accent-color: var(--vermelho);
 }
 
 .erro {
-  margin-top: 12px;
-  padding: 11px 13px;
-  border-radius: 10px;
-  background: rgba(200,16,46,.09);
-  border: 1px solid rgba(200,16,46,.25);
+  margin-top: 13px;
+  padding: 12px 14px;
+  border-radius: var(--raio-sm);
+  background: rgba(200,16,46,.08);
+  border: 1px solid rgba(200,16,46,.28);
   color: var(--vermelho-esc);
   font-size: 13.5px;
   font-weight: 600;
   text-align: left;
 }
 
-/* ─── TELA DO CÓDIGO ────────────────────────────────────────────────────── */
+/* ─── TELA DO CÓDIGO ──────────────────────────────────────────────────────── */
+/* Desenhado como cupom picotado: o formato sozinho já diz "isso vale algo". */
 
-.codigo-caixa {
-  margin: 16px 0;
-  padding: 16px;
-  border-radius: 14px;
-  background: repeating-linear-gradient(45deg, rgba(232,163,61,.13) 0 10px, rgba(232,163,61,.05) 10px 20px);
+.cupom {
+  position: relative;
+  margin: 18px 0;
+  padding: 18px 16px;
+  border-radius: var(--raio-sm);
+  background:
+    repeating-linear-gradient(45deg, rgba(232,163,61,.14) 0 9px, rgba(232,163,61,.05) 9px 18px);
   border: 2px dashed var(--dourado-esc);
 }
 
-.codigo-rotulo {
-  font-size: 11.5px;
+/* Os furos laterais do picote. */
+.cupom::before, .cupom::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--creme-alto);
+  border: 2px dashed var(--dourado-esc);
+  transform: translateY(-50%);
+}
+.cupom::before { left: -12px;  clip-path: inset(0 0 0 50%); }
+.cupom::after  { right: -12px; clip-path: inset(0 50% 0 0); }
+
+.cupom-rotulo {
+  font-size: 10.5px;
   font-weight: 800;
-  letter-spacing: .18em;
+  letter-spacing: .17em;
   text-transform: uppercase;
   color: var(--tinta-fraca);
 }
 
-.codigo-valor {
+.cupom-codigo {
   margin-top: 5px;
-  font-size: clamp(31px, 10vw, 40px);
+  font-size: clamp(32px, 10.5vw, 42px);
   font-weight: 900;
-  letter-spacing: .06em;
+  letter-spacing: .07em;
   color: var(--tinta);
   font-variant-numeric: tabular-nums;
 }
@@ -342,26 +510,65 @@ body {
   padding: 0;
   list-style: none;
   text-align: left;
-  font-size: 13.5px;
-  line-height: 1.65;
+  font-size: 13px;
+  line-height: 1.7;
   color: var(--tinta-fraca);
 }
 
-.regras li { padding-left: 20px; position: relative; }
-.regras li::before { content: '•'; position: absolute; left: 6px; color: var(--dourado-esc); font-weight: 900; }
-.regras strong { color: var(--tinta); }
+.regras li { padding-left: 22px; position: relative; }
+.regras li::before {
+  content: '';
+  position: absolute;
+  left: 6px; top: .62em;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--dourado);
+}
+.regras strong { color: var(--tinta); font-weight: 800; }
 
-/* ─── ESTADOS ───────────────────────────────────────────────────────────── */
+/* ─── ESTADOS ─────────────────────────────────────────────────────────────── */
 
 .carregando {
-  margin: 40px 0;
-  font-size: 14px;
+  margin: 22px 0 0;
+  font-size: 13.5px;
+  font-weight: 600;
   color: var(--tinta-fraca);
+  letter-spacing: .02em;
 }
 
-.pulso { animation: pulsa 1.4s ease-in-out infinite; }
-@keyframes pulsa { 0%,100% { opacity: 1 } 50% { opacity: .45 } }
+.pulso { animation: pulsa 1.5s ease-in-out infinite; }
+@keyframes pulsa { 0%, 100% { opacity: 1 } 50% { opacity: .42 } }
+
+/* ─── RODAPÉ ──────────────────────────────────────────────────────────────── */
+
+.mosaico {
+  width: 100%;
+  flex: none;
+  height: 22px;
+  border-top: 4px solid var(--vermelho);
+  border-bottom: 4px solid var(--verde);
+  background-color: var(--dourado);
+  background-image:
+    linear-gradient( 45deg, var(--verde) 25%, transparent 25% 75%, var(--azul) 75%),
+    linear-gradient(-45deg, var(--azul) 25%, transparent 25% 75%, var(--verde) 75%);
+  background-size: 16px 16px;
+}
+
+.rodape-nota {
+  flex: none;
+  margin: 0;
+  padding: 13px 22px calc(15px + env(safe-area-inset-bottom));
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.55;
+  color: var(--tinta-fraca);
+  text-align: center;
+}
+
+@media (min-width: 620px) {
+  .rodape-nota { padding-bottom: 15px; }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .cartao, .pulso { animation: none; }
+  .cartao, .pulso, .botao-girar { animation: none; }
 }
