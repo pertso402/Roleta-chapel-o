@@ -1,0 +1,14 @@
+node_modules/
+.next/
+out/
+build/
+
+# Segredo. A service key do Supabase ignora RLS: se vazar, qualquer pessoa
+# lê a base inteira de clientes e emite cupom de graça.
+.env
+.env.local
+.env*.local
+
+.vercel
+*.log
+.DS_Store

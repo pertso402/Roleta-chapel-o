@@ -1,0 +1,151 @@
+/* Painel operacional. Não precisa ser bonito, precisa ser rápido de ler —
+   a tela de busca por código é usada com o cliente esperando na linha. */
+
+.pn {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 20px 16px 60px;
+}
+
+.pn h1 {
+  font-size: 20px;
+  margin: 0 0 4px;
+  color: var(--vermelho);
+}
+
+.pn .sub { margin: 0 0 22px; font-size: 13px; color: var(--tinta-fraca); }
+
+.pn section {
+  background: var(--creme-alto);
+  border: 1px solid rgba(43,33,24,.1);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
+.pn h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--tinta-fraca);
+  margin: 0 0 14px;
+}
+
+/* ─── LOGIN ─────────────────────────────────────────────────────────────── */
+
+.pn-login {
+  max-width: 340px;
+  margin: 12vh auto;
+  text-align: center;
+}
+
+/* ─── BUSCA (a tela do balcão) ──────────────────────────────────────────── */
+
+.pn-busca { display: flex; gap: 10px; }
+
+.pn-busca input {
+  flex: 1;
+  padding: 16px;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  border: 2px solid rgba(43,33,24,.2);
+  border-radius: 12px;
+  font-family: inherit;
+  background: #fff;
+  color: var(--tinta);
+}
+
+.pn-busca input:focus { outline: none; border-color: var(--vermelho); }
+
+.pn-achado { margin-top: 16px; padding: 16px; border-radius: 12px; border: 2px solid; }
+.pn-achado.gerado    { border-color: #1EA750; background: rgba(30,167,80,.08); }
+.pn-achado.resgatado { border-color: var(--tinta-fraca); background: rgba(43,33,24,.06); }
+.pn-achado.expirado  { border-color: var(--vermelho); background: rgba(200,16,46,.08); }
+.pn-achado.vazio     { border-color: var(--vermelho); background: rgba(200,16,46,.08); }
+
+.pn-veredito { font-size: 22px; font-weight: 900; margin-bottom: 8px; }
+.pn-achado.gerado    .pn-veredito { color: #15803D; }
+.pn-achado.resgatado .pn-veredito { color: var(--tinta-fraca); }
+.pn-achado.expirado  .pn-veredito,
+.pn-achado.vazio     .pn-veredito { color: var(--vermelho); }
+
+.pn-linha { font-size: 14px; line-height: 1.7; }
+.pn-linha b { display: inline-block; min-width: 108px; color: var(--tinta-fraca); font-weight: 700; }
+
+/* ─── MÉTRICAS ──────────────────────────────────────────────────────────── */
+
+.pn-taxas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.pn-taxa {
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--creme);
+  border: 1px solid rgba(43,33,24,.1);
+}
+
+.pn-taxa .rot { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--tinta-fraca); font-weight: 800; }
+.pn-taxa .val { font-size: 27px; font-weight: 900; color: var(--azul); margin: 5px 0 2px; }
+.pn-taxa .abs { font-size: 12px; color: var(--tinta-fraca); }
+.pn-taxa .dica { font-size: 11px; color: var(--tinta-fraca); margin-top: 7px; line-height: 1.4; font-style: italic; }
+
+.pn-aviso {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: rgba(232,163,61,.16);
+  border: 1px solid var(--dourado-esc);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* ─── TABELAS ───────────────────────────────────────────────────────────── */
+
+.pn-rolagem { overflow-x: auto; }
+
+.pn table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.pn th {
+  text-align: left; padding: 9px 8px; font-size: 11px; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--tinta-fraca); border-bottom: 2px solid rgba(43,33,24,.14);
+  white-space: nowrap;
+}
+.pn td { padding: 9px 8px; border-bottom: 1px solid rgba(43,33,24,.07); white-space: nowrap; }
+.pn td.cod { font-weight: 800; letter-spacing: .04em; }
+
+.pn-tag {
+  display: inline-block; padding: 2px 9px; border-radius: 99px;
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+}
+.pn-tag.gerado    { background: rgba(30,167,80,.16); color: #15803D; }
+.pn-tag.resgatado { background: rgba(29,53,87,.14); color: var(--azul); }
+.pn-tag.expirado  { background: rgba(200,16,46,.13); color: var(--vermelho); }
+
+/* ─── CONTROLES ─────────────────────────────────────────────────────────── */
+
+.pn-barra { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+
+.pn select, .pn input[type="number"] {
+  padding: 9px 11px; font-size: 14px; font-family: inherit;
+  border: 1.5px solid rgba(43,33,24,.2); border-radius: 9px; background: #fff; color: var(--tinta);
+}
+
+.pn-btn {
+  padding: 10px 16px; border: none; border-radius: 9px; cursor: pointer;
+  font-size: 14px; font-weight: 800; font-family: inherit;
+  background: var(--vermelho); color: #fff;
+}
+.pn-btn.claro { background: none; border: 1.5px solid rgba(43,33,24,.22); color: var(--tinta-fraca); }
+.pn-btn:disabled { opacity: .5; cursor: default; }
+
+.pn-peso { width: 78px; }
+
+.pn-erro {
+  padding: 11px 13px; border-radius: 9px; margin-top: 12px;
+  background: rgba(200,16,46,.09); border: 1px solid rgba(200,16,46,.28);
+  color: var(--vermelho-esc); font-size: 13.5px; font-weight: 600;
+}

@@ -1,0 +1,367 @@
+/* ─── PALETA CHAPELÃO ──────────────────────────────────────────────────────
+   Cores tiradas do logo: sombrero amarelo com faixa vermelha, verde e azul
+   sobre fundo creme. O dourado é reservado pro prêmio — se ele aparecer em
+   botão comum, a fatia rara para de parecer especial.                       */
+
+:root {
+  --creme:      #FBF3E4;
+  --creme-alto: #FFFDF7;
+  --vermelho:   #C8102E;
+  --vermelho-esc: #9E0C24;
+  --azul:       #1D3557;
+  --verde:      #1B4D3E;
+  --dourado:    #E8A33D;
+  --dourado-esc:#C4832A;
+  --tinta:      #2B2118;
+  --tinta-fraca:#6B5B4A;
+  --sombra:     0 6px 20px rgba(43, 33, 24, .16);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--creme);
+  color: var(--tinta);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: contain;
+}
+
+body {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── ESTRUTURA ─────────────────────────────────────────────────────────── */
+
+.palco {
+  flex: 1;
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 18px 18px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.cabecalho { margin-bottom: 10px; }
+
+.marca {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--vermelho);
+}
+
+.chamada {
+  margin: 8px 0 2px;
+  font-size: clamp(23px, 7vw, 30px);
+  font-weight: 900;
+  line-height: 1.12;
+  color: var(--tinta);
+}
+
+.subchamada {
+  margin: 0;
+  font-size: 15px;
+  color: var(--tinta-fraca);
+  line-height: 1.45;
+}
+
+/* ─── RODAPÉ MOSAICO ────────────────────────────────────────────────────── */
+/* Faixa do sombrero: listra vermelha, mosaico de triângulos, listra verde. */
+
+.mosaico {
+  width: 100%;
+  border-top: 5px solid var(--vermelho);
+  border-bottom: 5px solid var(--verde);
+  height: 26px;
+  background-color: var(--dourado);
+  background-image:
+    linear-gradient( 45deg, var(--verde) 25%, transparent 25% 75%, var(--azul) 75%),
+    linear-gradient(-45deg, var(--azul) 25%, transparent 25% 75%, var(--verde) 75%);
+  background-size: 18px 18px;
+  background-position: 0 0;
+}
+
+.rodape-nota {
+  padding: 12px 20px calc(14px + env(safe-area-inset-bottom));
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--tinta-fraca);
+  text-align: center;
+  background: var(--creme);
+}
+
+/* ─── ROLETA ────────────────────────────────────────────────────────────── */
+
+.roleta-area {
+  position: relative;
+  width: min(88vw, 340px);
+  aspect-ratio: 1;
+  margin: 14px auto 6px;
+}
+
+/* Aro externo dourado, com o mesmo peso visual da aba do chapéu. */
+.roleta-aro {
+  position: absolute;
+  inset: -9px;
+  border-radius: 50%;
+  background: conic-gradient(var(--dourado), #F7D08A, var(--dourado-esc), #F7D08A, var(--dourado));
+  box-shadow: var(--sombra);
+}
+
+.roleta-disco {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  will-change: transform;
+  transform: rotate(0deg);
+}
+
+.roleta-disco svg { display: block; width: 100%; height: 100%; }
+
+/* Agulha fixa no topo. Fica FORA do disco que gira, senão giraria junto. */
+.agulha {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 13px solid transparent;
+  border-right: 13px solid transparent;
+  border-top: 26px solid var(--vermelho);
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,.3));
+  z-index: 3;
+}
+
+.agulha::after {
+  content: '';
+  position: absolute;
+  top: -30px; left: -7px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--vermelho);
+  border: 3px solid var(--dourado);
+}
+
+/* Miolo com o sombrero. Também fora do disco: o chapéu não roda. */
+.miolo {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 27%; aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--creme-alto);
+  border: 4px solid var(--dourado);
+  display: grid;
+  place-items: center;
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(0,0,0,.2);
+}
+
+.miolo svg { width: 74%; height: auto; }
+
+/* ─── BOTÕES ────────────────────────────────────────────────────────────── */
+
+.botao {
+  display: block;
+  width: 100%;
+  padding: 17px 20px;
+  border: none;
+  border-radius: 14px;
+  font-size: 17px;
+  font-weight: 800;
+  font-family: inherit;
+  color: #fff;
+  background: var(--vermelho);
+  box-shadow: 0 4px 0 var(--vermelho-esc);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .08s ease, box-shadow .08s ease;
+}
+
+.botao:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--vermelho-esc); }
+.botao:disabled { opacity: .55; box-shadow: none; transform: none; cursor: default; }
+
+.botao-girar {
+  margin-top: 18px;
+  font-size: 19px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.botao-zap { background: #1EA750; box-shadow: 0 4px 0 #15803D; }
+.botao-zap:active { box-shadow: 0 1px 0 #15803D; }
+
+.botao-fantasma {
+  margin-top: 10px;
+  background: none;
+  border: 1.5px solid rgba(43,33,24,.22);
+  color: var(--tinta-fraca);
+  box-shadow: none;
+  font-size: 14.5px;
+  font-weight: 700;
+  padding: 13px;
+}
+.botao-fantasma:active { transform: none; background: rgba(43,33,24,.05); }
+
+/* ─── CARTÕES ───────────────────────────────────────────────────────────── */
+
+.cartao {
+  width: 100%;
+  background: var(--creme-alto);
+  border-radius: 18px;
+  padding: 22px 20px;
+  box-shadow: var(--sombra);
+  border: 1px solid rgba(43,33,24,.08);
+  animation: sobe .38s cubic-bezier(.2,.8,.3,1) both;
+}
+
+@keyframes sobe {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.premio-selo {
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--dourado-esc);
+}
+
+.premio-nome {
+  margin: 6px 0 8px;
+  font-size: clamp(26px, 8vw, 33px);
+  font-weight: 900;
+  line-height: 1.1;
+  color: var(--vermelho);
+}
+
+.premio-desc {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--tinta-fraca);
+}
+
+/* ─── FORMULÁRIO ────────────────────────────────────────────────────────── */
+
+.campo { margin-top: 14px; text-align: left; }
+
+.campo label {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 800;
+  margin-bottom: 6px;
+  color: var(--tinta);
+}
+
+.campo input[type="text"],
+.campo input[type="tel"] {
+  width: 100%;
+  padding: 15px 14px;
+  font-size: 16px; /* < 16px faz o iOS dar zoom ao focar o campo */
+  font-family: inherit;
+  color: var(--tinta);
+  background: #fff;
+  border: 1.5px solid rgba(43,33,24,.2);
+  border-radius: 12px;
+  outline: none;
+}
+
+.campo input:focus { border-color: var(--vermelho); box-shadow: 0 0 0 3px rgba(200,16,46,.13); }
+
+.consentimento {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 16px;
+  text-align: left;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--tinta-fraca);
+}
+
+.consentimento input {
+  flex: 0 0 auto;
+  width: 21px; height: 21px;
+  margin: 0;
+  accent-color: var(--vermelho);
+}
+
+.erro {
+  margin-top: 12px;
+  padding: 11px 13px;
+  border-radius: 10px;
+  background: rgba(200,16,46,.09);
+  border: 1px solid rgba(200,16,46,.25);
+  color: var(--vermelho-esc);
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: left;
+}
+
+/* ─── TELA DO CÓDIGO ────────────────────────────────────────────────────── */
+
+.codigo-caixa {
+  margin: 16px 0;
+  padding: 16px;
+  border-radius: 14px;
+  background: repeating-linear-gradient(45deg, rgba(232,163,61,.13) 0 10px, rgba(232,163,61,.05) 10px 20px);
+  border: 2px dashed var(--dourado-esc);
+}
+
+.codigo-rotulo {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--tinta-fraca);
+}
+
+.codigo-valor {
+  margin-top: 5px;
+  font-size: clamp(31px, 10vw, 40px);
+  font-weight: 900;
+  letter-spacing: .06em;
+  color: var(--tinta);
+  font-variant-numeric: tabular-nums;
+}
+
+.regras {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--tinta-fraca);
+}
+
+.regras li { padding-left: 20px; position: relative; }
+.regras li::before { content: '•'; position: absolute; left: 6px; color: var(--dourado-esc); font-weight: 900; }
+.regras strong { color: var(--tinta); }
+
+/* ─── ESTADOS ───────────────────────────────────────────────────────────── */
+
+.carregando {
+  margin: 40px 0;
+  font-size: 14px;
+  color: var(--tinta-fraca);
+}
+
+.pulso { animation: pulsa 1.4s ease-in-out infinite; }
+@keyframes pulsa { 0%,100% { opacity: 1 } 50% { opacity: .45 } }
+
+@media (prefers-reduced-motion: reduce) {
+  .cartao, .pulso { animation: none; }
+}
