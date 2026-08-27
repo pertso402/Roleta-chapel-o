@@ -270,6 +270,114 @@ body::before {
 
 .miolo svg { width: 72%; height: auto; }
 
+/* ─── DESFOQUE DA RODA ────────────────────────────────────────────────────
+   A roda embaça faltando pouco pra parar. É o miolo do formato: a pessoa
+   entrega nome e telefone PRA DESCOBRIR o que ganhou, não depois de já
+   saber. Se ela já viu que é uma bebida, boa parte fecha a página ali.
+   A roda continua girando por trás do borrão — o giro não é interrompido,
+   só escondido, e o resultado já estava decidido no servidor de qualquer
+   forma.                                                                    */
+
+.roleta-area.desfocada {
+  filter: blur(9px) saturate(.85);
+  opacity: .8;
+  transform: scale(.97);
+  transition: filter .55s ease, opacity .55s ease, transform .55s ease;
+}
+
+/* ─── TELINHA DE CAPTURA ──────────────────────────────────────────────────── */
+
+.veu {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  /* Scrim liso em vez de backdrop-filter: o borrão que importa já está na
+     roda, e backdrop-filter custa caro justamente nos celulares baratos que
+     são a maior parte do público de marmita. */
+  background: linear-gradient(180deg, rgba(43,29,18,.42), rgba(43,29,18,.62));
+  animation: surge .3s ease both;
+}
+
+@keyframes surge { from { opacity: 0 } to { opacity: 1 } }
+
+@media (min-width: 620px) { .veu { align-items: center; padding: 20px; } }
+
+.folha-form {
+  width: 100%;
+  max-width: 470px;
+  max-height: 92dvh;
+  overflow-y: auto;
+  padding: 16px 20px calc(24px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, var(--creme-alto), var(--creme));
+  border-top: 3px solid var(--dourado);
+  border-radius: 26px 26px 0 0;
+  box-shadow: 0 -20px 55px rgba(43,29,18,.45);
+  animation: sobe-folha .42s cubic-bezier(.2,.85,.3,1) both;
+}
+
+@media (min-width: 620px) {
+  .folha-form { border-radius: 26px; border: 1px solid rgba(184,121,31,.3); border-top: 3px solid var(--dourado); }
+}
+
+@keyframes sobe-folha {
+  from { transform: translateY(100%); }
+  to   { transform: none; }
+}
+
+/* Alça de arrasto: dá o vocabulário de "folha que subiu", que é o que a
+   pessoa reconhece de qualquer app do celular. */
+.alca {
+  width: 42px; height: 4px;
+  margin: 0 auto 14px;
+  border-radius: 99px;
+  background: rgba(184,121,31,.4);
+}
+
+.folha-titulo {
+  margin: 0;
+  font-size: clamp(22px, 6.6vw, 27px);
+  font-weight: 900;
+  line-height: 1.12;
+  letter-spacing: -.02em;
+  color: var(--tinta);
+  text-align: center;
+}
+
+.folha-sub {
+  margin: 8px 0 4px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--tinta-fraca);
+  text-align: center;
+}
+
+/* Três pontinhos pulsando: sinaliza que a roleta ainda está resolvendo ali
+   atrás, o que é literalmente verdade enquanto a animação termina. */
+.suspense {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 14px 0 2px;
+}
+
+.suspense i {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--dourado);
+  animation: salta 1.1s ease-in-out infinite;
+}
+.suspense i:nth-child(2) { animation-delay: .15s; }
+.suspense i:nth-child(3) { animation-delay: .3s; }
+
+@keyframes salta {
+  0%, 60%, 100% { transform: none; opacity: .45; }
+  30%           { transform: translateY(-6px); opacity: 1; }
+}
+
 /* ─── BOTÕES ──────────────────────────────────────────────────────────────── */
 
 .botao {
@@ -570,5 +678,9 @@ body::before {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cartao, .pulso, .botao-girar { animation: none; }
+  .cartao, .pulso, .botao-girar, .suspense i { animation: none; }
+  /* A folha aparece no lugar em vez de subir; o desfoque continua, porque
+     ele não é enfeite — é o que segura o prêmio escondido. */
+  .veu, .folha-form { animation: none; }
+  .roleta-area.desfocada { transition: none; }
 }

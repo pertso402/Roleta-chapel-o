@@ -92,11 +92,11 @@ function caminhoFatia(indice, fatia) {
   return `M ${CX} ${CY} L ${x0} ${y0} A ${R} ${R} 0 ${arcoGrande} 1 ${x1} ${y1} Z`;
 }
 
-function Roleta({ premios, discoRef }) {
+function Roleta({ premios, discoRef, desfocada }) {
   const fatia = 360 / premios.length;
 
   return (
-    <div className="roleta-area">
+    <div className={`roleta-area${desfocada ? ' desfocada' : ''}`} aria-hidden={desfocada || undefined}>
       <div className="roleta-aro" />
       <div className="roleta-disco" ref={discoRef}>
         <svg viewBox="0 0 300 300" role="img" aria-label="Roleta de prêmios do Chapelão">
@@ -203,6 +203,31 @@ function animarAte({ disco, indice, total, raroIndice }) {
   return { anim, duracao: total_ms };
 }
 
+// Dispara quando o giro chega numa FRAÇÃO dele — não num horário.
+//
+// `setTimeout` não serve aqui. Medido neste projeto, num desktop: timer
+// pedido pra 2493ms disparou em 3349ms, 856ms atrasado, porque a thread
+// principal está ocupada com a própria animação. Resultado: a folha subia
+// DEPOIS de a roda já ter parado, que é exatamente o que ela existe pra
+// evitar. Em celular barato — o público de marmita — o atraso é maior.
+//
+// requestAnimationFrame lê o relógio da própria animação, então o gatilho é
+// o progresso do giro e não o do sistema. Retorna uma função de cancelamento.
+function aoChegarEm(anim, fracao, aoAtingir) {
+  const alvo = Number(anim.effect.getTiming().duration) * fracao;
+  let cancelado = false;
+
+  const passo = () => {
+    if (cancelado) return;
+    const agora = Number(anim.currentTime) || 0;
+    if (agora >= alvo || anim.playState === 'finished') { aoAtingir(); return; }
+    requestAnimationFrame(passo);
+  };
+
+  requestAnimationFrame(passo);
+  return () => { cancelado = true; };
+}
+
 // Espera o giro terminar SEM depender só de `anim.finished`.
 //
 // Um navegador que congela animação em aba oculta nunca resolve essa promessa,
@@ -226,10 +251,15 @@ function dataBR(iso) {
 }
 
 export default function Pagina() {
-  const [etapa, setEtapa] = useState('carregando'); // carregando|pronta|girando|revelado|codigo
+  // carregando → pronta → girando → formulario → codigo
+  //
+  // O formulário entra ANTES da revelação, de propósito: a pessoa preenche
+  // pra descobrir o que ganhou. Revelar antes e pedir o dado depois derruba
+  // a captura — com prêmio de R$4 não existe reciprocidade que segure, e
+  // quem já viu que ganhou uma bebida simplesmente fecha a página.
+  const [etapa, setEtapa] = useState('carregando');
   const [premios, setPremios] = useState([]);
   const [sessaoId, setSessaoId] = useState(null);
-  const [premio, setPremio] = useState(null);
   const [resgate, setResgate] = useState(null);
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
@@ -240,11 +270,40 @@ export default function Pagina() {
 
   const discoRef = useRef(null);
   const origemRef = useRef({ origem: 'ifood' });
+  const cancelarFolhaRef = useRef(null);
+  const nomeRef = useRef(null);
+  const sessaoIniciadaRef = useRef(false);
+
+  // Trava a rolagem do fundo enquanto a folha está aberta: sem isso, no
+  // Android o teclado empurra a página e a pessoa perde o campo de vista.
+  useEffect(() => {
+    if (etapa !== 'formulario') return;
+    const antes = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    return () => { document.documentElement.style.overflow = antes; };
+  }, [etapa]);
+
+  // Foca o primeiro campo assim que a folha sobe — um toque a menos.
+  useEffect(() => {
+    if (etapa === 'formulario') nomeRef.current?.focus({ preventScroll: true });
+  }, [etapa]);
+
+  useEffect(() => () => cancelarFolhaRef.current?.(), []);
 
   // Abre a sessão assim que a página monta. Ler a querystring aqui (em vez de
   // useSearchParams) evita ter que embrulhar a página num Suspense só por causa
   // de dois parâmetros de UTM.
+  //
+  // A trava do ref não é firula de StrictMode: sem ela o efeito roda duas
+  // vezes, nascem DUAS sessões e a resposta mais lenta sobrescreve o
+  // `sessaoId` depois de a pessoa já ter girado — o resgate então vai parar
+  // numa sessão que nunca girou e o servidor recusa com "gire antes de
+  // resgatar". Também dobrava a contagem da taxa 1 ("escaneou"), que é
+  // justamente a métrica que mede o adesivo.
   useEffect(() => {
+    if (sessaoIniciadaRef.current) return;
+    sessaoIniciadaRef.current = true;
+
     const q = new URLSearchParams(window.location.search);
     const ctx = {
       origem: q.get('origem') || 'ifood',
@@ -291,10 +350,21 @@ export default function Pagina() {
         raroIndice: raroIndice < 0 ? d.total_fatias - 1 : raroIndice,
       });
 
+      // A folha sobe faltando ~28% do giro — no ponto em que a agulha está
+      // passando rente ao prêmio raro e a roda já vem quase parando. É o
+      // instante de maior tensão do formato, e é nele que o dado é pedido.
+      // A roda NÃO para: ela termina o giro por trás do borrão.
+      cancelarFolhaRef.current = aoChegarEm(giro.anim, 0.72, () => setEtapa('formulario'));
+
       await esperarGiro(giro);
-      setPremio(d.premio);
-      setEtapa('revelado');
+
+      // Rede de segurança: rAF não roda com a aba em segundo plano. Se a
+      // pessoa trocou de app no meio do giro e voltou, o gatilho acima pode
+      // nunca ter disparado — e ela ficaria olhando uma roda parada sem
+      // nada acontecer. Aqui a folha sobe de qualquer jeito.
+      setEtapa((atual) => (atual === 'girando' ? 'formulario' : atual));
     } catch {
+      cancelarFolhaRef.current?.();
       setEtapa('pronta');
       setErro('Deu ruim no giro. Tenta de novo?');
     }
@@ -362,7 +432,10 @@ export default function Pagina() {
     });
   }
 
-  const mostraRoleta = etapa === 'pronta' || etapa === 'girando' || etapa === 'revelado';
+  // Na tela do código a roda some. Além de não ter mais função ali, ela
+  // brigaria com o cartão no caso do telefone repetido: a agulha teria
+  // parado no prêmio de agora, e o cupom mostrado é o do primeiro giro.
+  const mostraRoleta = etapa === 'pronta' || etapa === 'girando' || etapa === 'formulario';
 
   return (
     <div className="cena">
@@ -376,8 +449,6 @@ export default function Pagina() {
           </div>
 
           {etapa === 'codigo' ? (
-            <h1 className="chamada">Prêmio <span className="grifo">garantido</span></h1>
-          ) : etapa === 'revelado' ? (
             <h1 className="chamada">Você <span className="grifo">ganhou!</span></h1>
           ) : (
             <>
@@ -392,7 +463,7 @@ export default function Pagina() {
         {etapa === 'carregando' && <p className="carregando pulso">Preparando sua roleta…</p>}
 
         {mostraRoleta && premios.length > 0 && (
-          <Roleta premios={premios} discoRef={discoRef} />
+          <Roleta premios={premios} discoRef={discoRef} desfocada={etapa === 'formulario'} />
         )}
 
         {etapa === 'pronta' && (
@@ -401,54 +472,13 @@ export default function Pagina() {
 
         {etapa === 'girando' && <p className="carregando pulso">Girando…</p>}
 
-        {etapa === 'revelado' && premio && (
-          <section className="cartao" style={{ marginTop: 20 }}>
-            <div className="premio-selo">Seu prêmio</div>
-            <h2 className="premio-nome">{premio.nome}</h2>
-            <p className="premio-desc">{premio.descricao}</p>
-
-            <form onSubmit={enviar}>
-              <p className="form-topo">Pra onde a gente manda seu código?</p>
-
-              <div className="campo">
-                <label htmlFor="nome">Seu nome</label>
-                <input
-                  id="nome" type="text" required autoComplete="given-name"
-                  placeholder="Como te chamam?" value={nome}
-                  onChange={(e) => setNome(e.target.value)} maxLength={60}
-                />
-              </div>
-
-              <div className="campo">
-                <label htmlFor="tel">Seu WhatsApp</label>
-                <input
-                  id="tel" type="tel" required inputMode="numeric" autoComplete="tel"
-                  placeholder="(44) 99999-9999" value={telefone}
-                  onChange={(e) => setTelefone(mascararTelefone(e.target.value))}
-                />
-              </div>
-
-              <label className="consentimento">
-                <input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} />
-                <span>
-                  Aceito receber contato do Restaurante Chapelão pelo WhatsApp para
-                  resgatar meu prêmio e conhecer as novidades da casa.
-                </span>
-              </label>
-
-              {erro && <div className="erro">{erro}</div>}
-
-              <button className="botao" type="submit" disabled={enviando} style={{ marginTop: 18 }}>
-                {enviando ? 'Gerando seu código…' : 'Pegar meu código'}
-              </button>
-            </form>
-          </section>
-        )}
-
         {etapa === 'codigo' && resgate && (
           <section className="cartao" style={{ marginTop: 16 }}>
-            <div className="premio-selo">{resgate.premio}</div>
-            <p className="premio-desc" style={{ marginTop: 10 }}>{resgate.premio_descricao}</p>
+            {/* Agora é AQUI que o prêmio aparece pela primeira vez, então ele
+                é o herói do cartão — não mais um rótulo pequeno em cima. */}
+            <div className="premio-selo">Seu prêmio</div>
+            <h2 className="premio-nome">{resgate.premio}</h2>
+            <p className="premio-desc">{resgate.premio_descricao}</p>
 
             <div className="cupom">
               <div className="cupom-rotulo">Seu código</div>
@@ -480,10 +510,66 @@ export default function Pagina() {
           </section>
         )}
 
-        {etapa !== 'codigo' && etapa !== 'revelado' && erro && (
+        {etapa !== 'codigo' && etapa !== 'formulario' && erro && (
           <div className="erro" style={{ marginTop: 16 }}>{erro}</div>
         )}
       </main>
+
+      {/* ─── A TELINHA ────────────────────────────────────────────────────
+          Sobe com a roda ainda girando por trás do borrão. O prêmio não é
+          citado em lugar nenhum aqui: é justamente o não saber que faz a
+          pessoa preencher. */}
+      {etapa === 'formulario' && (
+        <div className="veu" role="dialog" aria-modal="true" aria-labelledby="folha-titulo">
+          <div className="folha-form">
+            <div className="alca" />
+
+            <h2 className="folha-titulo" id="folha-titulo">
+              A roleta parou<br /><span className="grifo">no seu prêmio</span>
+            </h2>
+            <p className="folha-sub">
+              Preenche aqui pra ver o que você ganhou e receber seu código.
+            </p>
+
+            <div className="suspense" aria-hidden="true"><i /><i /><i /></div>
+
+            <form onSubmit={enviar}>
+              <div className="campo">
+                <label htmlFor="nome">Seu nome</label>
+                <input
+                  ref={nomeRef}
+                  id="nome" type="text" required autoComplete="given-name"
+                  placeholder="Como te chamam?" value={nome}
+                  onChange={(e) => setNome(e.target.value)} maxLength={60}
+                />
+              </div>
+
+              <div className="campo">
+                <label htmlFor="tel">Seu WhatsApp</label>
+                <input
+                  id="tel" type="tel" required inputMode="numeric" autoComplete="tel"
+                  placeholder="(44) 99999-9999" value={telefone}
+                  onChange={(e) => setTelefone(mascararTelefone(e.target.value))}
+                />
+              </div>
+
+              <label className="consentimento">
+                <input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} />
+                <span>
+                  Aceito receber contato do Restaurante Chapelão pelo WhatsApp para
+                  resgatar meu prêmio e conhecer as novidades da casa.
+                </span>
+              </label>
+
+              {erro && <div className="erro">{erro}</div>}
+
+              <button className="botao" type="submit" disabled={enviando} style={{ marginTop: 18 }}>
+                {enviando ? 'Abrindo seu prêmio…' : 'Ver meu prêmio'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       <div className="mosaico" />
       <p className="rodape-nota">
