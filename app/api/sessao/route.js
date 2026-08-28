@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { criarSessao, excedeuLimite, hashIp, idDoPremioRaro, listarPremios, premioPublico } from '../../../lib/supabase.js';
+import { criarSessao, excedeuLimite, faltandoConfig, hashIp, idDoPremioRaro, listarPremios, premioPublico } from '../../../lib/supabase.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,6 +13,19 @@ function ipDaRequisicao(req) {
 // uma linha aqui = um QR lido, mesmo que a pessoa nunca gire.
 export async function POST(req) {
   try {
+    // Checa a configuração ANTES de tocar no banco. Sem isso o erro sairia
+    // como "falha_interna" genérico, e a causa mais provável de a roleta não
+    // abrir — variável de ambiente faltando no deploy — ficaria escondida
+    // atrás da mesma mensagem de um erro de rede qualquer.
+    const faltando = faltandoConfig();
+    if (faltando.length) {
+      console.error('[sessao] variáveis de ambiente faltando:', faltando.join(', '));
+      return NextResponse.json(
+        { erro: 'config_ausente', faltando, veja: '/api/saude' },
+        { status: 503 },
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const ipHash = hashIp(ipDaRequisicao(req));
 

@@ -313,6 +313,16 @@ export default function Pagina() {
     };
     origemRef.current = ctx;
 
+    // Mensagem por causa, não uma só pra tudo. O cliente nunca lê palavra
+    // técnica — problema de configuração vira "em manutenção" pra ele — mas o
+    // detalhe vai pro console e pra /api/saude, que é onde quem cuida do
+    // sistema descobre o que houve sem precisar adivinhar.
+    const MENSAGENS = {
+      config_ausente: 'A roleta está em manutenção. Daqui a pouco ela volta!',
+      sem_premios: 'A roleta está sendo ajustada. Volta daqui a pouco!',
+      muitas_tentativas: 'Muita gente girando agora. Espera um minutinho e recarrega.',
+    };
+
     fetch('/api/sessao', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -320,7 +330,17 @@ export default function Pagina() {
     })
       .then((r) => r.json())
       .then((d) => {
-        if (d.erro) throw new Error(d.erro);
+        if (d.erro) {
+          if (d.erro === 'config_ausente') {
+            console.error(
+              `[roleta] Faltam variáveis de ambiente neste deploy: ${(d.faltando || []).join(', ')}.\n`
+              + 'Abra /api/saude para o diagnóstico completo. Lembre que variável nova só '
+              + 'vale em deploy novo — cadastre e use Redeploy na Vercel.',
+            );
+          }
+          setErro(MENSAGENS[d.erro] || 'Não consegui carregar a roleta. Tenta recarregar a página.');
+          return;
+        }
         setSessaoId(d.sessao_id);
         setPremios(d.premios);
         setEtapa('pronta');
