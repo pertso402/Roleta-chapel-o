@@ -278,11 +278,21 @@ body::before {
    só escondido, e o resultado já estava decidido no servidor de qualquer
    forma.                                                                    */
 
+/* O borrão é dirigido quadro a quadro pelo JS, acompanhando a desaceleração
+   do giro — por isso é uma variável e não um estado ligado/desligado.
+   Trocar de nítido pra borrado de uma vez fazia a roda ficar legível bem no
+   momento em que ela já estava lenta: dava pra "ver" ela quase parando numa
+   fatia, e o prêmio que aparecia depois era outro. Honesto no código, mas
+   com cara de trapaça na tela. Agora ela some antes de dar pra ler. */
+.roleta-area {
+  --borrao: 0px;
+  filter: blur(var(--borrao));
+  transition: opacity .5s ease, transform .5s ease;
+}
+
 .roleta-area.desfocada {
-  filter: blur(9px) saturate(.85);
-  opacity: .8;
-  transform: scale(.97);
-  transition: filter .55s ease, opacity .55s ease, transform .55s ease;
+  opacity: .78;
+  transform: scale(.96);
 }
 
 /* ─── TELINHA DE CAPTURA ──────────────────────────────────────────────────── */

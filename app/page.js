@@ -92,11 +92,13 @@ function caminhoFatia(indice, fatia) {
   return `M ${CX} ${CY} L ${x0} ${y0} A ${R} ${R} 0 ${arcoGrande} 1 ${x1} ${y1} Z`;
 }
 
-function Roleta({ premios, discoRef, desfocada }) {
+function Roleta({ premios, discoRef, areaRef, desfocada }) {
   const fatia = 360 / premios.length;
 
   return (
-    <div className={`roleta-area${desfocada ? ' desfocada' : ''}`} aria-hidden={desfocada || undefined}>
+    <div ref={areaRef}
+         className={`roleta-area${desfocada ? ' desfocada' : ''}`}
+         aria-hidden={desfocada || undefined}>
       <div className="roleta-aro" />
       <div className="roleta-disco" ref={discoRef}>
         <svg viewBox="0 0 300 300" role="img" aria-label="Roleta de prêmios do Chapelão">
@@ -203,25 +205,56 @@ function animarAte({ disco, indice, total, raroIndice }) {
   return { anim, duracao: total_ms };
 }
 
-// Dispara quando o giro chega numa FRAÇÃO dele — não num horário.
+// ─── BORRÃO PROGRESSIVO ──────────────────────────────────────────────────────
+// A roda vai embaçando ENQUANTO desacelera, e some antes de ficar legível.
 //
-// `setTimeout` não serve aqui. Medido neste projeto, num desktop: timer
-// pedido pra 2493ms disparou em 3349ms, 856ms atrasado, porque a thread
-// principal está ocupada com a própria animação. Resultado: a folha subia
-// DEPOIS de a roda já ter parado, que é exatamente o que ela existe pra
-// evitar. Em celular barato — o público de marmita — o atraso é maior.
+// Por que não borrar só na hora de abrir a folha: no fim do giro a roda está
+// lenta, e uma roda lenta e nítida deixa a pessoa "ver" em que fatia ela está
+// quase parando. Como o prêmio revelado depois é o de verdade — e não o que
+// ela achou que ia sair — o resultado parecia trapaça. O sorteio sempre foi
+// honesto (é decidido no servidor antes de a roda girar), mas percepção de
+// trapaça vale tanto quanto trapaça. Some antes de dar pra ler e o problema
+// deixa de existir.
 //
-// requestAnimationFrame lê o relógio da própria animação, então o gatilho é
-// o progresso do giro e não o do sistema. Retorna uma função de cancelamento.
-function aoChegarEm(anim, fracao, aoAtingir) {
-  const alvo = Number(anim.effect.getTiming().duration) * fracao;
+// Todo o trecho lento do giro acontece com o borrão no máximo.
+// Os números saem de uma conta, não de gosto. O giro tem duas fases: uma
+// rápida que freia forte, e uma LENTA no fim — é a lenta que dá a impressão
+// de estar pousando numa fatia. Conforme a distância até o prêmio, a fase
+// lenta começa entre 65,4% e 76,2% do giro. Com o borrão cheio em 55%, ela
+// acontece inteira embaçada nos quatro casos, com folga de 10 a 21 pontos.
+const BORRAO_MAX = 12;      // px
+const BORRAO_INICIO = 0.28; // fração do giro em que começa a embaçar
+const BORRAO_FIM = 0.55;    // fração em que já está ilegível
+const FOLHA_EM = 0.58;      // a folha sobe com o borrão já cheio
+
+// Um laço de rAF só, cuidando do borrão e da subida da folha. Usa o relógio
+// da própria animação: `setTimeout` chegou a atrasar 856ms aqui, porque a
+// thread principal está ocupada animando a roda.
+function acompanharGiro(anim, area, aoAbrirFolha) {
   let cancelado = false;
+  let folhaAberta = false;
+
+  const abrir = () => {
+    if (folhaAberta) return;
+    folhaAberta = true;
+    aoAbrirFolha();
+  };
 
   const passo = () => {
     if (cancelado) return;
-    const agora = Number(anim.currentTime) || 0;
-    if (agora >= alvo || anim.playState === 'finished') { aoAtingir(); return; }
-    requestAnimationFrame(passo);
+
+    const duracao = Number(anim.effect.getTiming().duration) || 1;
+    const p = Math.min(1, (Number(anim.currentTime) || 0) / duracao);
+
+    const bruto = (p - BORRAO_INICIO) / (BORRAO_FIM - BORRAO_INICIO);
+    const t = Math.min(1, Math.max(0, bruto));
+    const suave = t * t * (3 - 2 * t); // smoothstep: entra e sai sem degrau
+    area?.style.setProperty('--borrao', `${(suave * BORRAO_MAX).toFixed(2)}px`);
+
+    if (p >= FOLHA_EM) abrir();
+
+    if (p < 1 && anim.playState !== 'finished') requestAnimationFrame(passo);
+    else abrir();
   };
 
   requestAnimationFrame(passo);
@@ -272,7 +305,20 @@ export default function Pagina() {
   const origemRef = useRef({ origem: 'ifood' });
   const cancelarFolhaRef = useRef(null);
   const nomeRef = useRef(null);
+  const areaRef = useRef(null);
   const sessaoIniciadaRef = useRef(false);
+
+  // Garante o borrão cheio quando a folha abre pelo caminho de exceção (aba
+  // em segundo plano, quando o rAF não roda e o laço nunca pintou o borrão).
+  // Sem isto a folha subiria com a roda nítida atrás — o cenário exato que
+  // ela existe pra evitar.
+  useEffect(() => {
+    if (etapa === 'formulario') {
+      areaRef.current?.style.setProperty('--borrao', `${BORRAO_MAX}px`);
+    } else if (etapa === 'pronta') {
+      areaRef.current?.style.setProperty('--borrao', '0px');
+    }
+  }, [etapa]);
 
   // Trava a rolagem do fundo enquanto a folha está aberta: sem isso, no
   // Android o teclado empurra a página e a pessoa perde o campo de vista.
@@ -370,11 +416,14 @@ export default function Pagina() {
         raroIndice: raroIndice < 0 ? d.total_fatias - 1 : raroIndice,
       });
 
-      // A folha sobe faltando ~28% do giro — no ponto em que a agulha está
-      // passando rente ao prêmio raro e a roda já vem quase parando. É o
-      // instante de maior tensão do formato, e é nele que o dado é pedido.
+      // A roda embaça junto com a desaceleração e some antes de ficar
+      // legível; a folha sobe com o borrão já cheio, faltando ~38% do giro.
       // A roda NÃO para: ela termina o giro por trás do borrão.
-      cancelarFolhaRef.current = aoChegarEm(giro.anim, 0.72, () => setEtapa('formulario'));
+      cancelarFolhaRef.current = acompanharGiro(
+        giro.anim,
+        areaRef.current,
+        () => setEtapa('formulario'),
+      );
 
       await esperarGiro(giro);
 
@@ -483,7 +532,8 @@ export default function Pagina() {
         {etapa === 'carregando' && <p className="carregando pulso">Preparando sua roleta…</p>}
 
         {mostraRoleta && premios.length > 0 && (
-          <Roleta premios={premios} discoRef={discoRef} desfocada={etapa === 'formulario'} />
+          <Roleta premios={premios} discoRef={discoRef} areaRef={areaRef}
+                  desfocada={etapa === 'formulario'} />
         )}
 
         {etapa === 'pronta' && (
