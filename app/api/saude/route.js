@@ -68,14 +68,34 @@ export async function GET() {
       }, { status: 502 });
     }
 
+    // Estas não impedem a roleta de rodar, então não podem derrubar o deploy.
+    // Mas as duas degradam CALADAS, que é pior que quebrar: ninguém percebe.
+    const avisos = [];
+
+    if ((count ?? 0) === 0) {
+      avisos.push('Nenhum prêmio ativo: a roleta não tem fatia pra sortear.');
+    }
+    if (!process.env.IP_SALT) {
+      avisos.push(
+        'IP_SALT não definida. O rate limit continua funcionando, mas o hash '
+        + 'do IP fica sem sal — e SHA-256 de IPv4 sem sal se reverte por força '
+        + 'bruta em segundos. Na prática o banco passa a guardar o IP de forma '
+        + 'reversível, que é justamente o que o hash existia pra evitar (LGPD).',
+      );
+    }
+    if (!process.env.PAINEL_SENHA) {
+      avisos.push('PAINEL_SENHA não definida: o login de /painel vai dar erro 500.');
+    }
+    if (!process.env.WHATSAPP_NUMERO) {
+      avisos.push('WHATSAPP_NUMERO não definida: o botão de resgate abre um link quebrado.');
+    }
+
     return NextResponse.json({
       ok: true,
       banco: 'conectado',
       premios_ativos: count ?? 0,
       variaveis,
-      aviso: (count ?? 0) === 0
-        ? 'Nenhum prêmio ativo: a roleta não tem fatia pra sortear.'
-        : undefined,
+      avisos: avisos.length ? avisos : undefined,
     });
   } catch (e) {
     return NextResponse.json({
