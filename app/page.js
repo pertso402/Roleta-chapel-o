@@ -369,10 +369,16 @@ export default function Pagina() {
       muitas_tentativas: 'Muita gente girando agora. Espera um minutinho e recarrega.',
     };
 
+    // sessionStorage e não localStorage: vale só enquanto a aba existir. Uma
+    // recarga reaproveita a sessão (não é um QR novo), mas quem escaneia de
+    // novo amanhã conta como visita nova, que é o certo.
+    let sessaoSalva = null;
+    try { sessaoSalva = sessionStorage.getItem('roleta_sessao'); } catch { /* modo privado */ }
+
     fetch('/api/sessao', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(ctx),
+      body: JSON.stringify({ ...ctx, sessao_id: sessaoSalva }),
     })
       .then((r) => r.json())
       .then((d) => {
@@ -387,6 +393,7 @@ export default function Pagina() {
           setErro(MENSAGENS[d.erro] || 'Não consegui carregar a roleta. Tenta recarregar a página.');
           return;
         }
+        try { sessionStorage.setItem('roleta_sessao', d.sessao_id); } catch { /* modo privado */ }
         setSessaoId(d.sessao_id);
         setPremios(d.premios);
         setEtapa('pronta');

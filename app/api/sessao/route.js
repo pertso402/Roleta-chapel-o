@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { criarSessao, excedeuLimite, faltandoConfig, hashIp, idDoPremioRaro, listarPremios, premioPublico } from '../../../lib/supabase.js';
+import { buscarSessao, criarSessao, excedeuLimite, faltandoConfig, hashIp, idDoPremioRaro, listarPremios, premioPublico } from '../../../lib/supabase.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -39,6 +39,19 @@ export async function POST(req) {
       return NextResponse.json({ erro: 'sem_premios' }, { status: 503 });
     }
 
+    const raroId = idDoPremioRaro(premios);
+    const publicos = premios.map((p) => premioPublico(p, raroId));
+
+    // Recarregar a página não é um QR novo. Se o navegador já tem uma sessão
+    // desta aba, ela é reaproveitada — assim a taxa 1 conta pessoas que
+    // chegaram pelo adesivo, e não vezes que a página foi carregada.
+    // Bônus antifraude: o prêmio fica preso à mesma sessão, então recarregar
+    // não sorteia de novo.
+    const existente = await buscarSessao(body.sessao_id);
+    if (existente) {
+      return NextResponse.json({ sessao_id: existente.id, premios: publicos, reaproveitada: true });
+    }
+
     const sessao = await criarSessao({
       origem: body.origem,
       utmSource: body.utm_source,
@@ -48,11 +61,7 @@ export async function POST(req) {
       userAgent: req.headers.get('user-agent'),
     });
 
-    const raroId = idDoPremioRaro(premios);
-    return NextResponse.json({
-      sessao_id: sessao.id,
-      premios: premios.map((p) => premioPublico(p, raroId)),
-    });
+    return NextResponse.json({ sessao_id: sessao.id, premios: publicos });
   } catch (e) {
     console.error('[sessao]', e);
     return NextResponse.json({ erro: 'falha_interna' }, { status: 500 });
