@@ -194,7 +194,9 @@ function Premios({ premios, aoMudar }) {
                 <td className="cod">{p.prefixo}</td>
                 <td>{p.nome}</td>
                 <td style={{ whiteSpace: 'normal', fontSize: 12 }}>
-                  {(p.itens_permitidos || []).join(' · ')}
+                  {p.tipo === 'desconto_percentual'
+                    ? `${p.desconto_percentual}% sobre o subtotal`
+                    : (p.itens_permitidos || []).join(' · ')}
                 </td>
                 <td>
                   <input

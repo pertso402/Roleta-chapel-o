@@ -573,7 +573,14 @@ export default function Pagina() {
             <ul className="regras">
               <li>Vale até <strong>{dataBR(resgate.valido_ate)}</strong></li>
               <li>Só em <strong>pedido direto no WhatsApp</strong>, não no app</li>
-              <li>Uso único — é só pedir a cortesia na conversa</li>
+              {/* Brinde a pessoa precisa pedir; desconto o sistema aplica
+                  sozinho no fechamento. Escrever "peça a cortesia" num cupom
+                  de desconto faria o cliente cobrar algo que já vem pronto. */}
+              <li>
+                {resgate.tipo === 'desconto_percentual'
+                  ? 'Uso único — o desconto entra sozinho no seu pedido'
+                  : 'Uso único — é só pedir a cortesia na conversa'}
+              </li>
             </ul>
 
             <button className="botao botao-zap" onClick={irProWhatsapp} style={{ marginTop: 20 }}>
