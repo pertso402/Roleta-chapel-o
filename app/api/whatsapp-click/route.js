@@ -1,16 +1,9 @@
 import { NextResponse } from 'next/server';
 import { marcarCliqueWhatsapp } from '../../../lib/supabase.js';
+import { linkWhatsapp } from '../../../lib/whatsapp.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-// Montado no servidor pra o número sair de variável de ambiente, e não do
-// bundle: trocar o WhatsApp da loja não exige rebuild da landing.
-function linkWhatsapp(codigo) {
-  const numero = (process.env.WHATSAPP_NUMERO || '').replace(/\D/g, '');
-  const texto = `Olá! Quero resgatar meu prêmio: ${codigo}`;
-  return `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
-}
 
 // Métrica 3 das quatro taxas. O client chama isto e SÓ DEPOIS navega pro
 // wa.me — se navegasse antes, o browser abandonaria a requisição no meio e a

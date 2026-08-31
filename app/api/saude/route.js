@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { faltandoConfig, sb } from '../../../lib/supabase.js';
+import { normalizarWhatsapp, pareceCelular } from '../../../lib/whatsapp.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -86,8 +87,20 @@ export async function GET() {
     if (!process.env.PAINEL_SENHA) {
       avisos.push('PAINEL_SENHA não definida: o login de /painel vai dar erro 500.');
     }
-    if (!process.env.WHATSAPP_NUMERO) {
-      avisos.push('WHATSAPP_NUMERO não definida: o botão de resgate abre um link quebrado.');
+    // O número da loja merece checagem própria: "ok (10 caracteres)" não
+    // dizia que o link estava quebrado, e foi assim que duas clientes reais
+    // clicaram em "Resgatar no WhatsApp" e caíram em número inválido.
+    const wpp = normalizarWhatsapp(process.env.WHATSAPP_NUMERO);
+    if (!wpp.ok) {
+      avisos.push(`WHATSAPP_NUMERO inválido (${wpp.motivo}): o botão de resgate não abre conversa.`);
+    } else {
+      if (wpp.corrigido) {
+        avisos.push(`WHATSAPP_NUMERO estava sem o DDI e foi corrigido para ${wpp.numero}. Vale arrumar na Vercel pra não depender da correção.`);
+      }
+      if (wpp.aviso) avisos.push(`WHATSAPP_NUMERO: ${wpp.aviso}.`);
+      if (pareceCelular(wpp.numero) === false) {
+        avisos.push(`${wpp.numero} parece ser um telefone FIXO. O WhatsApp Business aceita fixo, mas só depois de verificação por ligação — se a linha não estiver registrada, o wa.me responde "número inválido". Teste abrindo https://wa.me/${wpp.numero} num celular.`);
+      }
     }
 
     return NextResponse.json({
