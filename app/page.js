@@ -356,6 +356,10 @@ export default function Pagina() {
       lote: q.get('lote') || null,
       utm_source: q.get('utm_source'),
       utm_campaign: q.get('utm_campaign'),
+      // ref = o disparo da campanha que trouxe este clique. Sem ele a sessao fica
+      // anonima e nao da pra saber QUEM abriu o link — que e justamente um dos
+      // degraus do funil que a campanha precisa medir.
+      ref: q.get('ref') || null,
     };
     origemRef.current = ctx;
 

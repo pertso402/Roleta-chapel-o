@@ -57,6 +57,7 @@ export async function POST(req) {
       utmSource: body.utm_source,
       utmCampaign: body.utm_campaign,
       lote: body.lote,
+      refOfertaId: body.ref,
       ipHash,
       userAgent: req.headers.get('user-agent'),
     });
