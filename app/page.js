@@ -283,6 +283,23 @@ function dataBR(iso) {
   return `${d}/${m}/${a}`;
 }
 
+// Uma data solta ("Vale até 17/09/2026") não cria urgência nenhuma — o prêmio
+// vale pro próximo almoço, e é isso que a pessoa precisa ler. A casa fecha às
+// 14h, então "hoje" tem hora marcada e dizer isso é o que faz decidir agora.
+function validadeEmPalavras(iso) {
+  if (!iso) return '';
+  const emSP = (d) => new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(d);
+
+  const hoje = emSP(new Date());
+  const amanha = emSP(new Date(Date.now() + 86400000));
+
+  if (iso === hoje) return 'só HOJE, até as 14h';
+  if (iso === amanha) return `só amanhã (${dataBR(iso)}), até as 14h`;
+  return `até ${dataBR(iso)}`;
+}
+
 export default function Pagina() {
   // carregando → pronta → girando → formulario → codigo
   //
@@ -575,7 +592,7 @@ export default function Pagina() {
             )}
 
             <ul className="regras">
-              <li>Vale até <strong>{dataBR(resgate.valido_ate)}</strong></li>
+              <li>Vale <strong>{validadeEmPalavras(resgate.valido_ate)}</strong></li>
               <li>Só em <strong>pedido direto no WhatsApp</strong>, não no app</li>
               {/* Brinde a pessoa precisa pedir; desconto o sistema aplica
                   sozinho no fechamento. Escrever "peça a cortesia" num cupom
