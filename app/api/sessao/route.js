@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { buscarSessao, criarSessao, excedeuLimite, faltandoConfig, hashIp, idDoPremioRaro, listarPremios, premioPublico } from '../../../lib/supabase.js';
+import { buscarSessao, clienteDaSessao, criarSessao, excedeuLimite, faltandoConfig, hashIp, idDoPremioRaro, listarPremios, premioPublico } from '../../../lib/supabase.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -49,7 +49,10 @@ export async function POST(req) {
     // não sorteia de novo.
     const existente = await buscarSessao(body.sessao_id);
     if (existente) {
-      return NextResponse.json({ sessao_id: existente.id, premios: publicos, reaproveitada: true });
+      return NextResponse.json({
+        sessao_id: existente.id, premios: publicos, reaproveitada: true,
+        ja_conhecido: !!(await clienteDaSessao(existente.id)),
+      });
     }
 
     const sessao = await criarSessao({
@@ -62,7 +65,13 @@ export async function POST(req) {
       userAgent: req.headers.get('user-agent'),
     });
 
-    return NextResponse.json({ sessao_id: sessao.id, premios: publicos });
+    // Diz pra página se já sabemos quem é a pessoa (veio da campanha, com ?r=).
+    // Nesse caso ela pula o formulário: pedir nome e telefone de quem acabou de
+    // responder nosso WhatsApp é atrito no pior momento possível.
+    return NextResponse.json({
+      sessao_id: sessao.id, premios: publicos,
+      ja_conhecido: !!(await clienteDaSessao(sessao.id)),
+    });
   } catch (e) {
     console.error('[sessao]', e);
     return NextResponse.json({ erro: 'falha_interna' }, { status: 500 });

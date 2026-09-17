@@ -362,6 +362,8 @@ export default function Pagina() {
   const [premios, setPremios] = useState([]);
   const [sessaoId, setSessaoId] = useState(null);
   const [resgate, setResgate] = useState(null);
+  // Veio da campanha: já sabemos nome e telefone, então não há formulário.
+  const [jaConhecido, setJaConhecido] = useState(false);
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [aceite, setAceite] = useState(false);
@@ -380,6 +382,51 @@ export default function Pagina() {
   // em segundo plano, quando o rAF não roda e o laço nunca pintou o borrão).
   // Sem isto a folha subiria com a roda nítida atrás — o cenário exato que
   // ela existe pra evitar.
+  // Um caminho só de resgate, usado pelos dois fluxos: o formulário (QR do
+  // adesivo, onde a casa não sabe quem é) e o resgate direto (campanha, onde o
+  // ?r= já identificou a pessoa). Ter dois caminhos era garantia de um deles
+  // envelhecer sozinho.
+  const resgatarAgora = useCallback(async (dados) => {
+    const r = await fetch('/api/resgatar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessao_id: sessaoId, ...origemRef.current, ...dados }),
+    });
+    const d = await r.json();
+    if (d.erro) return { erro: d.mensagem || 'Não consegui gerar seu código.' };
+    return { resgate: d };
+  }, [sessaoId]);
+
+  // Fim do giro. Quem veio da campanha já é conhecido e resgata direto; quem
+  // veio do QR passa pelo formulário.
+  //
+  // O guard existe porque este ponto é alcançado por dois caminhos: o gatilho
+  // que acompanha a animação e a rede de segurança de quando a aba fica em
+  // segundo plano (rAF não roda escondido). Sem ele, voltar pro app no meio do
+  // giro dispararia dois resgates.
+  const concluiuRef = useRef(false);
+
+  const concluirGiro = useCallback(async () => {
+    if (concluiuRef.current) return;
+    concluiuRef.current = true;
+
+    if (!jaConhecido) {
+      setEtapa('formulario');
+      return;
+    }
+
+    const { resgate: r, erro: e } = await resgatarAgora({});
+    if (e) {
+      // Cai pro formulário em vez de deixar a pessoa sem prêmio na mão: ela
+      // acabou de ver o que ganhou, e travar aqui seria o pior momento.
+      setErro(e);
+      setEtapa('formulario');
+      return;
+    }
+    setResgate(r);
+    setEtapa('codigo');
+  }, [jaConhecido, resgatarAgora]);
+
   useEffect(() => {
     if (etapa === 'formulario') {
       areaRef.current?.style.setProperty('--borrao', `${BORRAO_MAX}px`);
@@ -468,6 +515,7 @@ export default function Pagina() {
         try { sessionStorage.setItem('roleta_sessao', d.sessao_id); } catch { /* modo privado */ }
         setSessaoId(d.sessao_id);
         setPremios(d.premios);
+        setJaConhecido(!!d.ja_conhecido);
         setEtapa('pronta');
       })
       .catch(() => setErro('Não consegui carregar a roleta. Tenta recarregar a página.'));
@@ -487,6 +535,7 @@ export default function Pagina() {
       const d = await r.json();
       if (d.erro) throw new Error(d.erro);
 
+      concluiuRef.current = false;
       const raroIndice = premios.findIndex((p) => p.raro);
 
       // Congela a roda ociosa onde ela está e parte daí. Tirar a classe sem
@@ -509,7 +558,7 @@ export default function Pagina() {
       cancelarFolhaRef.current = acompanharGiro(
         giro.anim,
         areaRef.current,
-        () => setEtapa('formulario'),
+        () => { concluirGiro(); },
       );
 
       await esperarGiro(giro);
@@ -518,7 +567,7 @@ export default function Pagina() {
       // pessoa trocou de app no meio do giro e voltou, o gatilho acima pode
       // nunca ter disparado — e ela ficaria olhando uma roda parada sem
       // nada acontecer. Aqui a folha sobe de qualquer jeito.
-      setEtapa((atual) => (atual === 'girando' ? 'formulario' : atual));
+      concluirGiro();
     } catch {
       cancelarFolhaRef.current?.();
       setEtapa('pronta');
@@ -535,21 +584,13 @@ export default function Pagina() {
     setEnviando(true);
 
     try {
-      const r = await fetch('/api/resgatar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessao_id: sessaoId,
-          nome,
-          telefone,
-          consentimento: aceite,
-          ...origemRef.current,
-        }),
+      // Não reusar `e` aqui: o parâmetro da função já é o evento do submit.
+      const { resgate: d, erro: falha } = await resgatarAgora({
+        nome, telefone, consentimento: aceite,
       });
-      const d = await r.json();
 
-      if (d.erro) {
-        setErro(d.mensagem || 'Não consegui gerar seu código. Confere os dados?');
+      if (falha) {
+        setErro(falha);
         setEnviando(false);
         return;
       }
