@@ -92,15 +92,16 @@ function caminhoFatia(indice, fatia) {
   return `M ${CX} ${CY} L ${x0} ${y0} A ${R} ${R} 0 ${arcoGrande} 1 ${x1} ${y1} Z`;
 }
 
-function Roleta({ premios, discoRef, areaRef, desfocada }) {
+function Roleta({ premios, discoRef, areaRef, desfocada, ociosa }) {
   const fatia = 360 / premios.length;
+  const indiceRaro = premios.findIndex((p) => p.raro);
 
   return (
     <div ref={areaRef}
          className={`roleta-area${desfocada ? ' desfocada' : ''}`}
          aria-hidden={desfocada || undefined}>
       <div className="roleta-aro" />
-      <div className="roleta-disco" ref={discoRef}>
+      <div className={`roleta-disco${ociosa ? ' ociosa' : ''}`} ref={discoRef}>
         <svg viewBox="0 0 300 300" role="img" aria-label="Roleta de prêmios do Chapelão">
           <defs>
             {/* Escurece a borda de cada fatia: dá profundidade sem precisar de
@@ -109,14 +110,49 @@ function Roleta({ premios, discoRef, areaRef, desfocada }) {
               <stop offset="55%" stopColor="#000" stopOpacity="0" />
               <stop offset="100%" stopColor="#000" stopOpacity=".26" />
             </radialGradient>
+
+            {/* A fatia rara é a única que vale um almoço inteiro, e o olho tem
+                que achar ela antes de ler qualquer rótulo. Ouro com luz vindo
+                do miolo, em vez de chapado: dá volume e parece iluminada por
+                dentro, não pintada. */}
+            <radialGradient id="ouro-divino" cx="50%" cy="50%" r="72%">
+              <stop offset="0%"   stopColor="#FFF3D0" />
+              <stop offset="42%"  stopColor="#F9DCA0" />
+              <stop offset="78%"  stopColor="#E8A33D" />
+              <stop offset="100%" stopColor="#B8791F" />
+            </radialGradient>
+
+            {/* O halo que vaza pra fora da fatia. Sem ele o ouro fica só uma
+                cor mais clara; com ele a fatia emite luz sobre as vizinhas. */}
+            <filter id="aura-divina" x="-60%" y="-60%" width="220%" height="220%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="5" result="borrao" />
+              <feFlood floodColor="#FFD98A" floodOpacity=".95" result="cor" />
+              <feComposite in="cor" in2="borrao" operator="in" result="halo" />
+              <feMerge>
+                <feMergeNode in="halo" />
+                <feMergeNode in="halo" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
           </defs>
 
           {premios.map((p, i) => (
-            <path key={p.id} d={caminhoFatia(i, fatia)} fill={p.cor}
-                  stroke="#FBF3E4" strokeWidth="2.5" />
+            <path key={p.id} d={caminhoFatia(i, fatia)}
+                  fill={p.raro ? 'url(#ouro-divino)' : p.cor}
+                  filter={p.raro ? 'url(#aura-divina)' : undefined}
+                  stroke={p.raro ? '#FFF3D0' : '#FBF3E4'}
+                  strokeWidth={p.raro ? 3.5 : 2.5} />
           ))}
 
           <circle cx={CX} cy={CY} r={R} fill="url(#profundidade)" />
+
+          {/* Respiro de luz por cima do ouro. Fica DEPOIS do véu de
+              profundidade de propósito — senão o escurecimento das bordas
+              comeria justamente o brilho que a fatia precisa ter. */}
+          {indiceRaro >= 0 && (
+            <path className="fatia-divina" d={caminhoFatia(indiceRaro, fatia)}
+                  fill="#FFF6DC" pointerEvents="none" />
+          )}
 
           {premios.map((p, i) => {
             const meio = i * fatia + fatia / 2;
@@ -164,7 +200,18 @@ function Roleta({ premios, discoRef, areaRef, desfocada }) {
 //   Fase B — rola devagar da fatia rara até a fatia sorteada.
 // Quando o sorteado É o raro, a fase A para na fatia anterior e a fase B entra
 // no raro: 72° de suspense em vez de uma volta inteira.
-function animarAte({ disco, indice, total, raroIndice }) {
+// Lê o ângulo em que o disco está AGORA. A roda fica girando devagar antes
+// do giro de verdade, então começar a animação do zero daria um salto — o
+// giro real precisa partir de onde a roda ociosa parou.
+function anguloAtual(el) {
+  const t = el && getComputedStyle(el).transform;
+  if (!t || t === "none") return 0;
+  const m = t.match(/matrix(([^)]+))/);
+  if (!m) return 0;
+  const [a, b] = m[1].split(",").map(Number);
+  return ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360;
+}
+function animarAte({ disco, indice, total, raroIndice, anguloInicial = 0 }) {
   const fatia = 360 / total;
   const anguloAlvo = (360 - (indice * fatia + fatia / 2) + 360) % 360;
 
@@ -175,13 +222,17 @@ function animarAte({ disco, indice, total, raroIndice }) {
   const distanciaFinal = passos * fatia;
 
   const VOLTAS = 4;
-  const rotacaoFinal = 360 * VOLTAS + anguloAlvo;
+  // Partindo de `anguloInicial`, o quanto falta girar pra cair no alvo. Somar
+  // o inicial ao total cru erraria a fatia: a posição final tem que ser
+  // congruente a anguloAlvo (mod 360), não deslocada por onde a roda estava.
+  const deltaAteAlvo = (((anguloAlvo - anguloInicial) % 360) + 360) % 360;
+  const rotacaoFinal = anguloInicial + 360 * VOLTAS + deltaAteAlvo;
   const rotacaoHesita = rotacaoFinal - distanciaFinal;
 
   const reduzido = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   if (reduzido) {
     const anim = disco.animate(
-      [{ transform: 'rotate(0deg)' }, { transform: `rotate(${anguloAlvo}deg)` }],
+      [{ transform: `rotate(${anguloInicial}deg)` }, { transform: `rotate(${anguloInicial + deltaAteAlvo}deg)` }],
       { duration: 550, easing: 'ease-out', fill: 'forwards' },
     );
     return { anim, duracao: 550 };
@@ -195,7 +246,7 @@ function animarAte({ disco, indice, total, raroIndice }) {
 
   const anim = disco.animate(
     [
-      { transform: 'rotate(0deg)', offset: 0, easing: 'cubic-bezier(.11,.62,.26,1)' },
+      { transform: `rotate(${anguloInicial}deg)`, offset: 0, easing: 'cubic-bezier(.11,.62,.26,1)' },
       { transform: `rotate(${rotacaoHesita}deg)`, offset: duracaoA / total_ms, easing: 'cubic-bezier(.35,0,.2,1)' },
       { transform: `rotate(${rotacaoFinal}deg)`, offset: 1 },
     ],
@@ -369,14 +420,14 @@ export default function Pagina() {
 
     const q = new URLSearchParams(window.location.search);
     const ctx = {
-      origem: q.get('origem') || 'ifood',
+      origem: q.get("origem") || (q.get("r") ? "recompra" : "ifood"),
       lote: q.get('lote') || null,
       utm_source: q.get('utm_source'),
       utm_campaign: q.get('utm_campaign'),
-      // ref = o disparo da campanha que trouxe este clique. Sem ele a sessao fica
-      // anonima e nao da pra saber QUEM abriu o link — que e justamente um dos
-      // degraus do funil que a campanha precisa medir.
-      ref: q.get('ref') || null,
+      // r = codigo curto do disparo que trouxe este clique. Sem ele a sessao
+      // fica anonima e o funil perde o degrau "abriu o link". `ref` (UUID)
+      // continua aceito pros links antigos que ja sairam.
+      ref: q.get("r") || q.get("ref") || null,
     };
     origemRef.current = ctx;
 
@@ -437,11 +488,19 @@ export default function Pagina() {
       if (d.erro) throw new Error(d.erro);
 
       const raroIndice = premios.findIndex((p) => p.raro);
+
+      // Congela a roda ociosa onde ela está e parte daí. Tirar a classe sem
+      // ler o ângulo antes faria o disco pular pro zero antes de girar.
+      const disco = discoRef.current;
+      const anguloInicial = anguloAtual(disco);
+      disco?.classList.remove("ociosa");
+
       const giro = animarAte({
-        disco: discoRef.current,
+        disco,
         indice: d.indice,
         total: d.total_fatias,
         raroIndice: raroIndice < 0 ? d.total_fatias - 1 : raroIndice,
+        anguloInicial,
       });
 
       // A roda embaça junto com a desaceleração e some antes de ficar
@@ -561,7 +620,8 @@ export default function Pagina() {
 
         {mostraRoleta && premios.length > 0 && (
           <Roleta premios={premios} discoRef={discoRef} areaRef={areaRef}
-                  desfocada={etapa === 'formulario'} />
+                  desfocada={etapa === 'formulario'}
+                  ociosa={etapa === 'pronta'} />
         )}
 
         {etapa === 'pronta' && (

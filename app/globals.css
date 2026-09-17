@@ -694,3 +694,43 @@ body::before {
   .veu, .folha-form { animation: none; }
   .roleta-area.desfocada { transition: none; }
 }
+
+/* ── RODA VIVA ANTES DO GIRO ────────────────────────────────────────────────
+   Parada, a roleta parece imagem e não convida a tocar. Girando devagarinho
+   ela se anuncia como coisa interativa antes de qualquer texto explicar.
+
+   60s por volta é lento o bastante pra não competir com a leitura dos rótulos
+   e rápido o bastante pra o movimento ser perceptível em dois segundos.
+
+   O giro de verdade (Web Animations) parte do ângulo em que esta animação
+   estiver — ver anguloAtual() no page.js. Animação de script tem prioridade
+   sobre animação CSS na cascata, então não há disputa pelo transform. */
+@keyframes giro-ocioso {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.roleta-disco.ociosa {
+  animation: giro-ocioso 60s linear infinite;
+}
+
+/* ── O RESPIRO DA FATIA DOURADA ─────────────────────────────────────────────
+   Pulso de luz por cima do ouro. A opacidade nunca chega perto de 1: passando
+   disso o rótulo "Almoço grátis" some sob o brilho, e o prêmio que a gente
+   mais quer que seja visto vira um borrão claro. */
+@keyframes respiro-divino {
+  0%, 100% { opacity: .10; }
+  50%      { opacity: .34; }
+}
+
+.fatia-divina {
+  animation: respiro-divino 2.6s ease-in-out infinite;
+  mix-blend-mode: soft-light;
+}
+
+/* Quem pediu menos movimento não recebe roda girando nem pulso de luz — as
+   duas são decoração, e decoração é a primeira coisa que sai. */
+@media (prefers-reduced-motion: reduce) {
+  .roleta-disco.ociosa { animation: none; }
+  .fatia-divina { animation: none; opacity: .18; }
+}
