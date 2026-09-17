@@ -364,6 +364,9 @@ export default function Pagina() {
   const [resgate, setResgate] = useState(null);
   // Veio da campanha: já sabemos nome e telefone, então não há formulário.
   const [jaConhecido, setJaConhecido] = useState(false);
+  // Entre o clique e o início da animação existe a ida ao servidor. Sem isto a
+  // roda parava e voltava pro zero nesse intervalo — parecia travamento.
+  const [aguardandoSorteio, setAguardandoSorteio] = useState(false);
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [aceite, setAceite] = useState(false);
@@ -524,6 +527,7 @@ export default function Pagina() {
   const girar = useCallback(async () => {
     if (etapa !== 'pronta' || !sessaoId) return;
     setEtapa('girando');
+    setAguardandoSorteio(true);
     setErro('');
 
     try {
@@ -536,6 +540,7 @@ export default function Pagina() {
       if (d.erro) throw new Error(d.erro);
 
       concluiuRef.current = false;
+      setAguardandoSorteio(false);
       const raroIndice = premios.findIndex((p) => p.raro);
 
       // Congela a roda ociosa onde ela está e parte daí. Tirar a classe sem
@@ -552,28 +557,39 @@ export default function Pagina() {
         anguloInicial,
       });
 
-      // A roda embaça junto com a desaceleração e some antes de ficar
-      // legível; a folha sobe com o borrão já cheio, faltando ~38% do giro.
-      // A roda NÃO para: ela termina o giro por trás do borrão.
-      cancelarFolhaRef.current = acompanharGiro(
-        giro.anim,
-        areaRef.current,
-        () => { concluirGiro(); },
-      );
+      // Com formulário, a roda embaça e some atrás da folha faltando ~38% do
+      // giro: ninguém precisa ver onde ela para, porque a tela seguinte pede
+      // nome e telefone.
+      //
+      // Sem formulário (campanha), esconder o fim é justamente perder a graça —
+      // a pessoa clica e o prêmio aparece do nada. Aqui a roda gira inteira, à
+      // vista, e só depois de parar no prêmio a tela troca.
+      if (!jaConhecido) {
+        cancelarFolhaRef.current = acompanharGiro(
+          giro.anim,
+          areaRef.current,
+          () => { concluirGiro(); },
+        );
+      }
 
       await esperarGiro(giro);
+
+      // Sem formulário, a roda acabou de parar no prêmio à vista. Trocar a tela
+      // no mesmo instante rouba justamente o momento que a pessoa esperou o
+      // giro inteiro pra ver.
+      if (jaConhecido) await new Promise((r) => setTimeout(r, 900));
 
       // Rede de segurança: rAF não roda com a aba em segundo plano. Se a
       // pessoa trocou de app no meio do giro e voltou, o gatilho acima pode
       // nunca ter disparado — e ela ficaria olhando uma roda parada sem
-      // nada acontecer. Aqui a folha sobe de qualquer jeito.
+      // nada acontecer. Aqui a tela avança de qualquer jeito.
       concluirGiro();
     } catch {
       cancelarFolhaRef.current?.();
       setEtapa('pronta');
       setErro('Deu ruim no giro. Tenta de novo?');
     }
-  }, [etapa, sessaoId, premios]);
+  }, [etapa, sessaoId, premios, jaConhecido, concluirGiro]);
 
   async function enviar(e) {
     e.preventDefault();
@@ -662,7 +678,7 @@ export default function Pagina() {
         {mostraRoleta && premios.length > 0 && (
           <Roleta premios={premios} discoRef={discoRef} areaRef={areaRef}
                   desfocada={etapa === 'formulario'}
-                  ociosa={etapa === 'pronta'} />
+                  ociosa={etapa === 'pronta' || aguardandoSorteio} />
         )}
 
         {etapa === 'pronta' && (
