@@ -644,6 +644,186 @@ body::before {
 }
 .regras strong { color: var(--tinta); font-weight: 800; }
 
+/* ─── DOBRE SEU PRÊMIO (VSL do convênio) ──────────────────────────────────────
+   Dourado, porque é prêmio — a mesma regra da fatia rara. O botão dentro dele
+   é o vermelho principal: é a ação que a tela quer, o resgate sem dobrar fica
+   como botão fantasma logo abaixo.                                          */
+
+.dobro {
+  margin: 4px 0 18px;
+  padding: 16px 16px 18px;
+  border-radius: var(--raio-sm);
+  background: linear-gradient(180deg, #FFF4D9, #FCE6B4);
+  border: 1.5px solid var(--dourado);
+  box-shadow: 0 6px 18px -10px rgba(184,121,31,.7);
+  text-align: center;
+}
+
+.dobro-selo {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 99px;
+  background: var(--vermelho);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.dobro-titulo {
+  margin: 10px 0 6px;
+  font-size: 19px;
+  font-weight: 900;
+  line-height: 1.2;
+  color: var(--tinta);
+}
+.dobro-titulo span { color: var(--vermelho); }
+
+.dobro-sub {
+  margin: 0 0 14px;
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--tinta-2);
+}
+.dobro-sub strong { color: var(--tinta); font-weight: 800; }
+
+/* O nome do prêmio troca de "Coca mini" pra "2 Coca mini": um pulo curto
+   marca a troca, senão a pessoa nem percebe que dobrou. */
+.premio-nome.dobrou { animation: dobrou .7s cubic-bezier(.2,1.6,.4,1) both; }
+@keyframes dobrou {
+  0%   { transform: scale(.6); opacity: 0; }
+  100% { transform: none; opacity: 1; }
+}
+
+/* ─── PLAYER DA VSL ───────────────────────────────────────────────────────────
+   Vídeo vertical, tela cheia no celular. Fica montado e escondido desde que a
+   oferta aparece (ver PlayerVsl) — por isso o estado fechado é visibility e
+   não display: um <video> com display:none não toca no iPhone.             */
+
+.vsl-veu {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0B0705;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease, visibility 0s linear .2s;
+}
+.vsl-veu.aberto {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity .2s ease;
+}
+
+.vsl-moldura {
+  position: relative;
+  height: 100dvh;
+  max-width: 100vw;
+  aspect-ratio: 9 / 16;
+}
+
+@media (min-width: 620px) {
+  .vsl-moldura { height: min(92dvh, 860px); border-radius: 22px; overflow: hidden; }
+}
+
+.vsl-moldura video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+.vsl-play {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 84px; height: 84px;
+  transform: translate(-50%, -50%);
+  border: none;
+  border-radius: 50%;
+  background: rgba(200,16,46,.92);
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(0,0,0,.45);
+  cursor: pointer;
+}
+.vsl-play svg { width: 40px; height: 40px; margin-left: 5px; }
+
+.vsl-fechar,
+.vsl-som {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top));
+  border: none;
+  background: rgba(0,0,0,.5);
+  color: #fff;
+  font-family: inherit;
+  cursor: pointer;
+}
+.vsl-fechar {
+  right: 12px;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  font-size: 26px;
+  line-height: 1;
+}
+.vsl-som {
+  left: 12px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 99px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.vsl-rodape {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 26px 16px calc(16px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, transparent, rgba(0,0,0,.78));
+  pointer-events: none;
+}
+
+.vsl-barra {
+  height: 5px;
+  border-radius: 99px;
+  background: rgba(255,255,255,.25);
+  overflow: hidden;
+}
+.vsl-barra i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--dourado), var(--dourado-claro));
+  transition: width .25s linear;
+}
+
+.vsl-falta {
+  margin-top: 9px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0,0,0,.6);
+}
+.vsl-falta strong { color: var(--dourado-claro); font-weight: 900; font-variant-numeric: tabular-nums; }
+
+.vsl-link {
+  pointer-events: auto;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--dourado-claro);
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 /* ─── ESTADOS ─────────────────────────────────────────────────────────────── */
 
 .carregando {
@@ -688,7 +868,7 @@ body::before {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cartao, .pulso, .botao-girar, .suspense i { animation: none; }
+  .cartao, .pulso, .botao-girar, .suspense i, .premio-nome.dobrou { animation: none; }
   /* A folha aparece no lugar em vez de subir; o desfoque continua, porque
      ele não é enfeite — é o que segura o prêmio escondido. */
   .veu, .folha-form { animation: none; }

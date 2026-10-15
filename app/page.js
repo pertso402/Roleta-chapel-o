@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { mascararTelefone } from '../lib/telefone.js';
+import { eventoVideo, OfertaDobro, PlayerVsl } from './vsl.js';
 
 // ─── PEÇAS DE MARCA ──────────────────────────────────────────────────────────
 // Tudo SVG inline: some do caminho crítico uma requisição por peça, e sai
@@ -373,8 +374,11 @@ export default function Pagina() {
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [copiado, setCopiado] = useState(false);
+  const [playerAberto, setPlayerAberto] = useState(false);
 
   const discoRef = useRef(null);
+  const videoRef = useRef(null);
+  const ofertaVistaRef = useRef(false);
   const origemRef = useRef({ origem: 'ifood' });
   const cancelarFolhaRef = useRef(null);
   const nomeRef = useRef(null);
@@ -453,6 +457,21 @@ export default function Pagina() {
   }, [etapa]);
 
   useEffect(() => () => cancelarFolhaRef.current?.(), []);
+
+  // Denominador do funil do vídeo: quantos VIRAM a oferta de dobrar.
+  useEffect(() => {
+    if (etapa !== 'codigo' || !resgate?.video?.pode_dobrar || ofertaVistaRef.current) return;
+    ofertaVistaRef.current = true;
+    eventoVideo(resgate, 'oferta');
+  }, [etapa, resgate]);
+
+  // Mesma trava de rolagem da folha do formulário, agora pro player.
+  useEffect(() => {
+    if (!playerAberto) return;
+    const antes = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    return () => { document.documentElement.style.overflow = antes; };
+  }, [playerAberto]);
 
   // Abre a sessão assim que a página monta. Ler a querystring aqui (em vez de
   // useSearchParams) evita ter que embrulhar a página num Suspense só por causa
@@ -622,20 +641,46 @@ export default function Pagina() {
 
   // Grava a métrica ANTES de sair da página: depois do redirect o browser
   // descarta a requisição pela metade e a taxa 3 do funil fica subestimada.
-  async function irProWhatsapp() {
+  async function irProWhatsapp({ convenio = false } = {}) {
     const codigo = resgate?.codigo;
     if (!codigo) return;
     try {
       const r = await fetch('/api/whatsapp-click', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ codigo }),
+        body: JSON.stringify({ codigo, convenio }),
       });
       const d = await r.json();
       if (d.url) window.location.href = d.url;
     } catch {
       setErro('Não consegui abrir o WhatsApp. Copia o código e chama a gente.');
     }
+  }
+
+  // play() aqui, dentro do toque: é o que deixa o iPhone tocar com som.
+  function assistir() {
+    setPlayerAberto(true);
+    const v = videoRef.current;
+    if (v) {
+      v.muted = false;
+      v.play().catch(() => { /* o player mostra o botão de play */ });
+    }
+  }
+
+  function fecharPlayer(maxSeg) {
+    setPlayerAberto(false);
+    setResgate((r) => ({ ...r, video: { ...r.video, max_seg: Math.max(r.video.max_seg, maxSeg) } }));
+  }
+
+  function dobrou(d) {
+    setPlayerAberto(false);
+    setResgate((r) => ({
+      ...r,
+      premio: d.premio,
+      premio_descricao: d.premio_descricao,
+      video: { ...r.video, dobrado: true, pode_dobrar: false },
+    }));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function copiar() {
@@ -649,6 +694,9 @@ export default function Pagina() {
   // brigaria com o cartão no caso do telefone repetido: a agulha teria
   // parado no prêmio de agora, e o cupom mostrado é o do primeiro giro.
   const mostraRoleta = etapa === 'pronta' || etapa === 'girando' || etapa === 'formulario';
+
+  const dobrado = Boolean(resgate?.video?.dobrado);
+  const ofertaDobro = Boolean(resgate?.video?.pode_dobrar);
 
   return (
     <div className="cena">
@@ -691,14 +739,16 @@ export default function Pagina() {
           <section className="cartao" style={{ marginTop: 16 }}>
             {/* Agora é AQUI que o prêmio aparece pela primeira vez, então ele
                 é o herói do cartão — não mais um rótulo pequeno em cima. */}
-            <div className="premio-selo">Seu prêmio</div>
-            <h2 className="premio-nome">{resgate.premio}</h2>
+            <div className="premio-selo">{dobrado ? 'Prêmio dobrado' : 'Seu prêmio'}</div>
+            <h2 className={`premio-nome${dobrado ? ' dobrou' : ''}`} key={resgate.premio}>{resgate.premio}</h2>
             <p className="premio-desc">{resgate.premio_descricao}</p>
 
             <div className="cupom">
               <div className="cupom-rotulo">Seu código</div>
               <div className="cupom-codigo">{resgate.codigo}</div>
             </div>
+
+            {ofertaDobro && <OfertaDobro video={resgate.video} aoAssistir={assistir} />}
 
             {resgate.repetido && (
               <div className="erro" style={{ marginBottom: 14 }}>
@@ -721,12 +771,33 @@ export default function Pagina() {
               </li>
             </ul>
 
-            <button className="botao botao-zap" onClick={irProWhatsapp} style={{ marginTop: 20 }}>
-              Resgatar no WhatsApp
-            </button>
-            <button className="botao botao-fantasma" onClick={copiar}>
-              {copiado ? 'Código copiado!' : 'Copiar código'}
-            </button>
+            {/* Três saídas, uma por estado. Depois do vídeo, o botão principal
+                leva o convênio junto na mensagem: o agente reconhece e chama
+                um atendente. Quem só quer o prêmio tem o caminho dele. */}
+            {dobrado ? (
+              <>
+                <button className="botao botao-zap" onClick={() => irProWhatsapp({ convenio: true })}
+                        style={{ marginTop: 20 }}>
+                  Resgatar e saber do convênio
+                </button>
+                <button className="botao botao-fantasma" onClick={() => irProWhatsapp()}>
+                  Só resgatar meu prêmio
+                </button>
+              </>
+            ) : ofertaDobro ? (
+              <button className="botao botao-fantasma" onClick={() => irProWhatsapp()} style={{ marginTop: 18 }}>
+                Resgatar sem dobrar
+              </button>
+            ) : (
+              <>
+                <button className="botao botao-zap" onClick={() => irProWhatsapp()} style={{ marginTop: 20 }}>
+                  Resgatar no WhatsApp
+                </button>
+                <button className="botao botao-fantasma" onClick={copiar}>
+                  {copiado ? 'Código copiado!' : 'Copiar código'}
+                </button>
+              </>
+            )}
 
             {erro && <div className="erro">{erro}</div>}
           </section>
@@ -791,6 +862,11 @@ export default function Pagina() {
             </form>
           </div>
         </div>
+      )}
+
+      {etapa === 'codigo' && ofertaDobro && (
+        <PlayerVsl resgate={resgate} aberto={playerAberto} videoRef={videoRef}
+                   aoFechar={fecharPlayer} aoConcluir={dobrou} />
       )}
 
       <div className="mosaico" />

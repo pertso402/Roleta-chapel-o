@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { COOKIE, tokenValido } from '../../../../lib/painel-auth.js';
 import { listarPremios, sb } from '../../../../lib/supabase.js';
+import { VIDEO_DURACAO_SEG } from '../../../../lib/video.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,48 @@ async function contar(tabela, filtros = (q) => q) {
   const { count, error } = await filtros(sb.from(tabela).select('id', { count: 'exact', head: true }));
   if (error) throw new Error(`${tabela}: ${error.message}`);
   return count || 0;
+}
+
+// ─── FUNIL DA VSL DO CONVÊNIO ────────────────────────────────────────────────
+// Conta só quem VIU a oferta: prêmio de desconto ou cupom vencido nunca recebe
+// a oferta, e entrar no denominador puxaria todas as taxas pra baixo.
+//
+// A retenção sai do ponto mais longe de cada pessoa: em cada marca de 5s, a
+// fração dos que deram play que chegaram até ali. É onde a VSL perde gente.
+async function funilDoVideo(desde) {
+  const { data, error } = await sb
+    .from('roleta_resgates')
+    .select('video_oferta_em, video_play_em, video_max_seg, video_concluiu_em, clicou_whatsapp, clicou_convenio')
+    .gte('created_at', desde)
+    .not('video_oferta_em', 'is', null)
+    .limit(5000);
+  if (error) throw new Error(`video: ${error.message}`);
+
+  const linhas = data || [];
+  const play = linhas.filter((l) => l.video_play_em);
+  const chegou = (seg) => play.filter((l) => l.video_max_seg >= seg).length;
+  const concluiu = linhas.filter((l) => l.video_concluiu_em);
+  const semPlay = linhas.filter((l) => !l.video_play_em);
+  const zap = (ls) => ls.filter((l) => l.clicou_whatsapp).length;
+
+  const retencao = [];
+  for (let s = 0; s <= VIDEO_DURACAO_SEG; s += 5) retencao.push({ seg: s, pessoas: chegou(s) });
+
+  return {
+    duracao: VIDEO_DURACAO_SEG,
+    oferta: linhas.length,
+    play: play.length,
+    p25: chegou(VIDEO_DURACAO_SEG * 0.25),
+    p50: chegou(VIDEO_DURACAO_SEG * 0.5),
+    p75: chegou(VIDEO_DURACAO_SEG * 0.75),
+    concluiu: concluiu.length,
+    convenio: linhas.filter((l) => l.clicou_convenio).length,
+    // Efeito no funil principal: o vídeo não pode estar custando o WhatsApp.
+    zap_concluiu: zap(concluiu),
+    zap_sem_play: zap(semPlay),
+    sem_play: semPlay.length,
+    retencao,
+  };
 }
 
 export async function GET(req) {
@@ -73,6 +116,7 @@ export async function GET(req) {
     if (errLeads) throw new Error(`leads: ${errLeads.message}`);
 
     const premios = await listarPremios({ apenasAtivos: false });
+    const video = await funilDoVideo(desde);
 
     const ticket = (leads || [])
       .filter((l) => l.status === 'resgatado' && l.valor_pedido_resgate)
@@ -88,6 +132,7 @@ export async function GET(req) {
       },
       funil: { sessoes, giros, resgates, cliques, resgatados },
       ticket_medio: ticketMedio,
+      video,
       leads: leads || [],
       premios,
     });

@@ -166,6 +166,31 @@ reinicia a leitura e nenhuma coorte fecha.
 
 ---
 
+## VSL do Convênio Chapelão (dobre seu prêmio)
+
+Na tela do prêmio aparece a oferta: assistir até o fim o vídeo do convênio
+(`public/vsl-convenio.mp4`, 1:23, vertical) e o prêmio dobra. É opcional — o
+botão "Resgatar sem dobrar" continua ali, porque quem vai pro WhatsApp não
+volta pra página.
+
+- **O dobro é texto no cupom.** `concluirVideo()` troca `cupons.descricao`
+  por `roleta_premios.descricao_dobro`; o agente lê essa descrição pra saber
+  quantas cortesias dar. Prêmio sem `descricao_dobro` não oferece o vídeo.
+- **Não dá pra pular.** O player não tem barra e volta qualquer avanço; o
+  servidor só dobra se passaram 75s de relógio desde o play.
+- **Depois do vídeo**, o botão principal manda pro WhatsApp "quero resgatar
+  meu prêmio + mais informações sobre o Convênio Chapelão". O agente
+  reconhece "convênio" no código (não na LLM), chama um atendente e acende o
+  alerta no painel — inclusive com a loja fechada.
+
+O painel mostra o funil (viu a oferta → play → 25/50/75% → terminou →
+clicou no convênio), a curva de retenção a cada 5s e o "foi pro zap" de quem
+terminou contra quem nem deu play — se o vídeo estiver custando resgate,
+aparece ali. "Terminou" mede o prêmio, não o convênio: o interesse de verdade
+é o clique no convênio.
+
+---
+
 ## Pendências antes de imprimir o lote
 
 - [x] **`WHATSAPP_NUMERO`** = `554437711475` (+55 44 3771-1475)
@@ -195,6 +220,7 @@ app/
     girar/                   sorteia no servidor, prende o prêmio na sessão
     resgatar/                cria cliente + cupom (o ponto de captura)
     whatsapp-click/          métrica 3, gravada ANTES do redirect
+    video/                   funil da VSL e o dobro do prêmio
     painel/                  login, dados, premio, baixa, csv
 lib/
   telefone.js                convenção do nono dígito (o arquivo delicado)

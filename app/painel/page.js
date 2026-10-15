@@ -160,6 +160,86 @@ function Taxas({ funil, denominador, ticketMedio, dias }) {
   );
 }
 
+// ─── VSL DO CONVÊNIO ─────────────────────────────────────────────────────────
+// Dois cuidados de leitura, escritos na própria tela:
+//  - "concluiu" mede o PRÊMIO, não o convênio — quem assiste pela Coca chega
+//    no fim do mesmo jeito. Interesse de verdade é o clique no convênio;
+//  - volume é baixo: nas primeiras semanas, leia os números absolutos.
+function Video({ v, dias }) {
+  if (!v) return null;
+
+  const etapas = [
+    { rot: 'Viu a oferta',        num: v.oferta },
+    { rot: 'Deu play',            num: v.play },
+    { rot: 'Passou de 25%',       num: v.p25 },
+    { rot: 'Passou de 50%',       num: v.p50 },
+    { rot: 'Passou de 75%',       num: v.p75 },
+    { rot: 'Terminou (dobrou)',   num: v.concluiu },
+    { rot: 'Clicou no convênio',  num: v.convenio },
+  ];
+
+  return (
+    <section>
+      <h2>VSL do convênio · últimos {dias} dias</h2>
+
+      {!v.oferta ? (
+        <p className="sub">Ninguém viu a oferta de dobrar no período.</p>
+      ) : (
+        <>
+          <div className="pn-funil">
+            {etapas.map((e) => (
+              <div className="pn-funil-linha" key={e.rot}>
+                <span className="rot">{e.rot}</span>
+                <span className="barra"><i style={{ width: `${(e.num / v.oferta) * 100}%` }} /></span>
+                <span className="num">{e.num} <small>{pct(e.num, v.oferta)}</small></span>
+              </div>
+            ))}
+          </div>
+
+          <div className="pn-taxas" style={{ marginTop: 12 }}>
+            <div className="pn-taxa">
+              <div className="rot">Terminou → convênio</div>
+              <div className="val">{pct(v.convenio, v.concluiu)}</div>
+              <div className="abs">{v.convenio} de {v.concluiu} que dobraram</div>
+              <div className="dica">É o número que diz se a VSL vende o convênio.</div>
+            </div>
+            <div className="pn-taxa">
+              <div className="rot">Foi pro zap · terminou o vídeo</div>
+              <div className="val">{pct(v.zap_concluiu, v.concluiu)}</div>
+              <div className="abs">{v.zap_concluiu} de {v.concluiu}</div>
+            </div>
+            <div className="pn-taxa">
+              <div className="rot">Foi pro zap · nem deu play</div>
+              <div className="val">{pct(v.zap_sem_play, v.sem_play)}</div>
+              <div className="abs">{v.zap_sem_play} de {v.sem_play}</div>
+              <div className="dica">Se o de cima ficar bem abaixo deste, o vídeo está custando resgate.</div>
+            </div>
+          </div>
+
+          <h3 className="pn-sub3">Retenção · de quem deu play, quantos chegaram em cada ponto</h3>
+          <div className="pn-retencao">
+            {v.retencao.map((r) => {
+              const frac = v.play ? r.pessoas / v.play : 0;
+              return (
+                <div className="col" key={r.seg} title={`${r.seg}s: ${r.pessoas} de ${v.play}`}>
+                  <span className="pct">{v.play ? Math.round(frac * 100) : 0}</span>
+                  <span className="barra"><i style={{ height: `${frac * 100}%` }} /></span>
+                  <span className="seg">{r.seg}s</span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="pn-aviso" style={{ marginTop: 12 }}>
+            Onde a barra despenca é o trecho do vídeo que perde gente — é ali que
+            vale reeditar. "Terminou" conta quem quis o prêmio em dobro, não quem
+            se interessou pelo convênio: interesse é o clique no convênio.
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 // ─── PRÊMIOS ─────────────────────────────────────────────────────────────────
 function Premios({ premios, aoMudar }) {
   const [erro, setErro] = useState('');
@@ -301,6 +381,8 @@ export default function Painel() {
         dias={dados.periodo_dias}
       />
 
+      <Video v={dados.video} dias={dados.periodo_dias} />
+
       <Premios premios={dados.premios} aoMudar={carregar} />
 
       <section>
@@ -329,7 +411,8 @@ export default function Painel() {
             <thead>
               <tr>
                 <th>Código</th><th>Nome</th><th>WhatsApp</th><th>Prêmio</th>
-                <th>Status</th><th>Vale até</th><th>Zap</th><th>Lote</th><th>Quando</th>
+                <th>Status</th><th>Vale até</th><th>Zap</th><th>Vídeo</th><th>Convênio</th>
+                <th>Lote</th><th>Quando</th>
               </tr>
             </thead>
             <tbody>
@@ -342,6 +425,12 @@ export default function Painel() {
                   <td><span className={`pn-tag ${l.status}`}>{l.status}</span></td>
                   <td>{dataBR(l.valido_ate)}</td>
                   <td>{l.clicou_whatsapp ? '✅' : '—'}</td>
+                  <td>
+                    {l.video_concluiu_em ? 'dobrou'
+                      : l.video_play_em ? `${l.video_max_seg}s`
+                      : l.video_oferta_em ? 'não deu play' : '—'}
+                  </td>
+                  <td>{l.clicou_convenio ? '✅' : '—'}</td>
                   <td>{l.lote || '—'}</td>
                   <td>{dataBR(l.created_at)}</td>
                 </tr>
